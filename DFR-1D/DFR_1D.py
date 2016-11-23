@@ -99,14 +99,18 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 
 # Initialisation
 
-    sol_flux_it=np.zeros([N,p+2])
-    grad=np.zeros([N,p+1])
-    gradF=np.zeros([N,p+2])
-    lapl=np.zeros([N,p+1])
-    Dadv= np.zeros([N, p + 1])
+#RP    sol_flux_it=np.zeros([N,p+2])
+    sol_flux_it=np.zeros([N,p+1])
+# RP   grad=np.zeros([N,p+1])
+#    gradF=np.zeros([N,p+2])
+#    lapl=np.zeros([N,p+1])
+#    Dadv= np.zeros([N, p + 1])
     sol_flux_p2 = np.zeros([N,p+3])
     aux_var2_it = np.zeros([N,p+3])
     aux_var_it = np.zeros([N,p+3])
+    flux_Dd = np.zeros([N,p+1])
+    flux_Dd2 = np.zeros([N,p+3])
+    flux = np.zeros([N,p+1])
 
 
 # preparation for extrapolation (outside the loop: doesn't change inside)
@@ -146,11 +150,11 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
                 if bcondL==0:
                     sol_flux_it[0,0]=Yl/J
                 elif bcondL==1:
-                    sol_flux_it[0,0]=sol_flux_it[N+1,0]	 #RP J'ai modif les indices pour faciliter l'extrapolation: [-1,-1] -> [N+1,0]	
+                    sol_flux_it[0,0]=sol_flux_it[-1,-1]	
                 if bcondR==0:
-                    sol_flux_it[N+1,0]=Yr/J 
+                    sol_flux_it[-1,-1]=Yr/J
                 elif bcondL==1:
-                    sol_flux_it[N+1,0]=sol_flux_it[0,0]
+                    sol_flux_it[-1,-1]=sol_flux_it[0,0]
                     
    
     # MAYBE USELESS : TOCHECK (RP)                  
@@ -172,7 +176,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
                 sol_flux_it[icell,0] = 0.5*(sol_flux_it_tmp[icell,0]+sol_flux_it_tmp[icell-1,p+2]) 
                 sol_flux_it[icell,p+2]= 0.5*(sol_flux_it_tmp[icell+1,0]+ sol_flux_it_tmp[icell,p+2])
                         
-        # Lagrangian interpolation of the previous solution (RP)                
+        # Lagrangian interpolation of the complete solution (RP)                
                 sol_flux_p2[icell,:]=np.dot(Extrap2,sol_flux_it[icell,:])
                 
         # Auxiliary variable computation (RP)
@@ -184,12 +188,25 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
                 aux_var_it[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
                 
                 
-        # Computation of the flux 
-                # TODO : A function computing the flux for more complex problem
-                flux_d[icell,:] = c*sol_flux_it_tmp[icell,:] + D*aux_var_it[icell,:]
-                flux_Dd[icell,:]=np.dot(Extrap,flux_d[icell,:])
+        # Computation of the flux (RP) 
+                #RP TODO : A function computing the flux for more complex problem
+                flux_d[icell,:] = c*sol_flux_it_tmp[icell,:] + D*aux_var_it[icell,:] #RP A REMPLACER
+                flux_Dd[icell,:]=np.dot(Extrap,flux_d[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
                 
+        # Extrapolation of the flux on borders (RP)        
+                flux_Dd_temp = np.copy(flux_Dd)
+                flux_Dd[icell,0] = 0.5*(flux_Dd_tmp[icell,0]+flux_Dd_tmp[icell-1,p+2]) + tau*(sol_flux_it_tmp[icell,0] - sol_flux_it_tmp[icell-1,p+2]) 
+                flux_Dd[icell,p+2]= 0.5*(flux_Dd_tmp[icell+1,0]+ flux_Dd_tmp[icell,p+2]) + tau*(sol_flux_it_tmp[icell+1,0]+ sol_flux_it_tmp[icell,p+2])
                 
+        # Lagrangian interpolation of the complete flux (RP)
+                flux_Dd2[icell,:]=np.dot(Extrap2,flux_Dd[icell,:])
+                
+         # Undersampling of the  flux (RP)
+                del flux_Dd2[icell,0]
+                del flux_Dd2[icell,p+2]
+                flux[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
+                
+            
 # TOFINISH (RP)
 
 
