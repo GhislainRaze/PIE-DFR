@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import numpy as np
 #import sympy as sp
 import scipy.optimize
@@ -12,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 
-def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -33,6 +36,9 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
     #Space step
     dx1=0.001
     dx=np.linspace(dx1*(p+1),dx1*(p+1),N) #Cell step AS
+    
+    # Penalizing parameter
+    tau = 0.
 
     # Cells centered about -L/2 to +L/2 AS
     L=np.sum(dx)
@@ -42,27 +48,20 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
         x[i+1]=x[i]+dx[i]
     
 #Calcul dt 
-    if (method==0): # Advection AS
-#test in case
-        if c==0.:
-            print "!!! c must have a value !!!"
-            exit()
-        else:
-            dt = CFL * (dx1/p+1) / c
-    elif(method==1): # Diffusion AS
-        if D==0.:
-            print "!!! D must have a value !!!"
-            exit()
-        else:
-            dt= CFL*(dx1/(p+1))**2 /D
+    if(c==0. and D==0.) :
+        print "Eternal frost"
+        exit()
+    elif c==0.: # Diffusion AS
+        print "Pure Diffusion"
+        dt = CFL*(dx1/((p+1)+1))**2 /D
+    elif D==0.: # Advection AS
+        print "Pure Advection"
+        dt= CFL*dx1/((p+1)+1)/c
     else: # Advection + Diffusion AS
-        if (D==0.) or (c==0.):
-            print "!!!c and D must have  values !!!"
-            exit()
-        else:
-            dtadv= CFL * min(dx) / (c*(p+1))
-            dtdiff=CFL*(min(dx)/(p+1))**2 /D
-            dt= min([dtadv,dtdiff])
+        print "Advection with Diffusion"
+        dtadv= CFL * min(dx) / (c*(p+1))
+        dtdiff=CFL*(min(dx)/((p+1)+1))**2 /D
+        dt= min([dtadv,dtdiff])
     
     print 'dt='+ str(dt)
     
@@ -75,7 +74,10 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 #Mesh creation with gauss points on isoparametric cells
 
     solPoint = solPointGen(p)
+    cellPoint = np.insert(solPoint,0,-1)
+    cellPoint = np.append(cellPoint,1)
     solPointMesh = pointMeshGen(N,p, solPoint,dx,x)
+    cellPointMesh = pointMeshGen(N,p+2, cellPoint,dx,x)
     
     
 #Initial conditions
@@ -88,7 +90,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
             if init==0: # u0 = gaussienne 
                 sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001) #Calcul des points flux. USELESS FOR DFR (RP) --> il s'agit plutot de la solution initiale (Gaussienne) ! 
             elif init==1: # u0 = fonction erreur
-                if method==0:
+                if 0==0:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
                 else:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
@@ -104,14 +106,15 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 # Initialisation
     # Attention : la majorité des matrices sont temporelles et peuvent être initialisées dans la boucle sur les cellules pour gagner de l'espace mémoire vive ! (AS)
 
-    sol_it = np.zeros([N,p+1])
-    sol_it_p2 = np.zeros([N,p+3]) # = sol_it_tmp (AS)
-    sol_it_cont = np.zeros([N,p+3]) # = sol_it (AS)
-    dsol_it_cont = np.zeros([N,p+3]) # = aux_var2_it (AS)
-    dsol_it_int = np.zeros([N,p+1]) # = aux_var2_it (AS)
-    flux_it_int = np.zeros([N,p+1]) # = flux_d (AS)
-    flux_it_p2 = np.zeros([N,p+3]) # = flux_Dd (AS)
-    flux_it_cont = np.zeros([N,p+3]) # = flux_Dd2 (AS)
+    sol_it = np.zeros([N,p+1]) # Values on solution points
+    sol_it_p2 = np.zeros([N,p+3]) # Values on solution points and interface points = sol_it_tmp (AS)
+    sol_it_cont = np.zeros([N,p+3]) # Continuous solution through interface points = sol_it (AS)
+    dsol_it_cont = np.zeros([N,p+3]) # Derivative of the continuous solution extrapolation = aux_var2_it (AS)
+    dsol_it_int = np.zeros([N,p+1]) # Undersampling of the derivative on solution points only = aux_var2_it (AS)
+    flux_it_int = np.zeros([N,p+1]) # Flux on solution points = flux_d (AS)
+    flux_it_p2 = np.zeros([N,p+3]) # Flux on solution and interface points = flux_Dd (AS)
+    flux_it_cont = np.zeros([N,p+3]) # Reconstructed continuous flux = flux_Dd2 (AS)
+    dflux_it_cont = np.zeros([N,p+3]) # Reconstructed flux derivative = flux_Dd2 (AS)
 
 # RP   grad=np.zeros([N,p+1])
 #    gradF=np.zeros([N,p+2])
@@ -121,11 +124,11 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 # preparation for extrapolation (outside the loop: doesn't change inside)
 
     
-    Extrap = ExtrapGen(p) # Lagrange extrapolation matrix of order P
+    #Extrap = ExtrapGen(p) # Lagrange extrapolation matrix of order P
     
     Extrap2 = Extrap2Gen(p) # Lagrange extrapolation matrix of order P+2
     
-    Deriv2=D2Gen(p) # Lagrange derivative extrapolation matrix of order P+2
+    Deriv2 = D2Gen(p) # Lagrange derivative extrapolation matrix of order P+2
 
 #Time loop until niter+1 for the last iteration to reach Tfin
     for itime in range(niter+1): # ??? On fait niter+1 itérations au lieu de niter ? AS
@@ -139,40 +142,58 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
         sol0 =np.copy(sol)
         
 #Range Kutta loop '''
-        for ik in range(len(alpha)):        
+        for ik in range(len(alpha)):
 
-            for icell in range(1,N-1): #Cell loop
+            sol_it = np.copy(sol);
 
-                # Extrapolation of solution on interfaces
+            for icell in range(1,N-1): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-                sol_it_p2[0,0] = bcondL
-                sol_it_p2[-1,-1] = bcondR
+            sol_it_p2[0,0] = bcondL
+            sol_it_p2[-1,-1] = bcondR
+
+            for icell in range(N): #Cell loop                
 
                 # Interface common solution points (AS) = Extrapolation of solution on borders (RP)
-                sol_common_left = 0.5*(sol_it_p2[icell-1,-1] + sol_it_p2[icell,0])
-                sol_common_right = 0.5*(sol_it_p2[icell,-1] + sol_it_p2[icell+1,0])
+                if(icell != 0):
+                    sol_common_left = 0.5*(sol_it_p2[icell-1,-1] + sol_it_p2[icell,0])
+                else:
+                    sol_common_left = bcondL
+                if(icell != N-1):
+                    sol_common_right = 0.5*(sol_it_p2[icell,-1] + sol_it_p2[icell+1,0])
+                else:
+                    sol_common_right = bcondR
 
                 # Lagrangian interpolation of the complete solution (RP)             
                 sol_it_cont[icell,:] = sol_it_p2[icell,:]
                 sol_it_cont[icell,0] = sol_common_left
                 sol_it_cont[icell,-1] = sol_common_right
 
+                #display(cellPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
+
                 # Solution derivative
                 J_i = dx[icell]*0.5
                 dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
 
                 # Undersampling of the auxiliary variable (RP)
-                dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2])
+                #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
+                #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
 
                 # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
-                flux_it_int[icell,:] = c*sol_it_p2[icell,:] - D*dsol_it_int[icell,:] # Interior flux
+                flux_it_p2[icell,:] = c*sol_it_p2[icell,:] - D*dsol_it_cont[icell,:] 
 
-                # Flux Extrapolation on Interfaces (RP)
-                flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
+                # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
+                #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
+
             
-                # Common Flux computation
-                flux_common_left = 0.5*(flux_it_p2[icell,0] + flux_it_p2[icell-1,p+2]) + tau*(sol_it_p2[icell-1,p+2] - sol_it_p2[icell,0]) 
-                flux_common_right = 0.5*(flux_it_p2[icell+1,0] + flux_it_p2[icell,p+2]) + tau*(sol_it_p2[icell,p+2] - sol_it_p2[icell+1,0])
+                # Interface Common Flux computation
+                if(icell != 0):
+                    flux_common_left = 0.5*(flux_it_p2[icell,0] + flux_it_p2[icell-1,p+2]) + tau*(sol_it_p2[icell-1,p+2] - sol_it_p2[icell,0])
+                else:
+                    flux_common_left = 0.
+                if(icell != N-1):
+                    flux_common_right = 0.5*(flux_it_p2[icell+1,0] + flux_it_p2[icell,p+2]) + tau*(sol_it_p2[icell,p+2] - sol_it_p2[icell+1,0])
+                else:
+                    flux_common_right = 0.
 
                 flux_it_cont[icell,:] = flux_it_p2[icell,:]
                 flux_it_cont[icell,0] = flux_common_left
@@ -180,135 +201,8 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 
                 # Flux Derivative
                 dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_cont[icell,:])/J_i
-
-            ########################################
-
-                # -> Gestion des cellules extrémales ? (AS)
-
-            # -> Intégration de la boucle en temps (AS)
-
             
-            ''' -> pas sûr que ce soit nécessaire (extrapolation + Undersampling...) (AS)
-                # Lagrangian interpolation of the complete flux (RP)
-                flux_Dd2[icell,:]=np.dot(Extrap2,flux_Dd[icell,:])
-            
-                # Undersampling of the  flux (RP)
-                del flux_Dd2[icell,0]
-                del flux_Dd2[icell,p+2]
-                flux[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
-            '''
-
-
-
-'''
-
-
-        # Extrapolation of solution on borders (RP)
-            sol_it_tmp = np.copy(sol_it) 
-            
-            sol_it[icell,0] = 0.5*(sol_it_tmp[icell,0]+sol_it_tmp[icell-1,p+2])
-            sol_it[icell,p+2]= 0.5*(sol_it_tmp[icell+1,0]+ sol_it_tmp[icell,p+2])
-                    
-    # Lagrangian interpolation of the complete solution (RP)                
-            sol_flux_p2[icell,:]=np.dot(Extrap2,sol_flux_it[icell,:])
-            
-    # Auxiliary variable computation (RP)
-            aux_var2_it[icell,:] = np.dot(Deriv2,sol_flux_it[icell,:])
-            
-    # Undersampling of the auxiliary variable (RP)
-            del aux_var2_it[icell,0]
-            del aux_var2_it[icell,p+2]
-            aux_var_it[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
-            
-            
-    '''
-    
-# TOFINISH (RP)
-
-
-################################################################################################################### Version SD ci-dessous (RP)
-
-''' bullship spoiler down below !
-#loop on number of cells
-            for icell in range(N):
-                
-# real domain to isoparametric dimension 
-                #Jacobian in 1D
-                J=dx[0]/2 # pussy -> c'est dx[icell] qu'il faut utiliser !
-                sol_it= sol/J #cela n'a pas d'interet ! c'est sur les distances qu'il faut utiliser le jacobien...
-                
-                
-# Extrapolation of solution on fluxes [= solutions (RP)] points -> ne sert à rien ! car les points sont confondus avec les solpoint, donc valent zéro partout sauf au point considéré
-                sol_flux_it[icell,:]=np.dot(Extrap,sol_it[icell,:]) # Si c'est bien le produit matriciel que je pense alors les 
-                                                                    #lagrangiens doivent etre ranges de manière à avoir les valeurs 
-                                                                    #en les points intérieurs sur les colonnes de Extrap cf en dessous AS
-                
-    # Les CL sont à l'interieur de la boucle parce que sinon on a un problème de dimensions avec la ligne ci-dessus (RP)
-                if bcondL==0:
-                    sol_flux_it[0,0]=Yl/J
-                elif bcondL==1:
-                    sol_flux_it[0,0]=sol_flux_it[-1,-1]	
-                if bcondR==0:
-                    sol_flux_it[-1,-1]=Yr/J
-                elif bcondL==1:
-                    sol_flux_it[-1,-1]=sol_flux_it[0,0]
-                    
-   
-    # MAYBE USELESS : TOCHECK (RP)                  
-#		# ADVECTION  Computation of fluxes at flux points : for advection F=cY
-#                
-#                if (method!=1):
-#                    flux_it=c*sol_flux_it
-#
-## isoparametric dimension to real domain not necessary in 1D
-#                    flux = flux_it
-##*J**(-1)*J
-'''
-
-
-# Treatment of interfaces with upwind scheme  for Advection
-                    for k in range(1,N):
-                        flux[k,0]=flux[k-1,-1] # Continuité du flux à gauche. Probablement pas utile pour DFR (RP)
-               
-                
-# real domain to isoparametric transformation non necessary in 1D
-                #flux_it = flux
-#/(J**(-1)*J)
-
-
-#Derivation of sol on flux point with Deriv 
-   
-                    Dadv[icell, :] = np.dot(Deriv, flux_it[icell,:]) # calcul de df/dx , soit notre q
-
-                #DIFFUSION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-# Treatment of interfaces with mean for diffusion
-                if (method !=0):
-                    sol_flux_it_tmp = np.copy(sol_flux_it)
-                    for k in range(1,N):
-                        sol_flux_it[k,0] = 0.5*(sol_flux_it_tmp[k,0]+sol_flux_it_tmp[k-1,-1]) 
-                    for k in range(0,N-1):
-                        sol_flux_it[k,-1]= 0.5*(sol_flux_it_tmp[k+1,0]+ sol_flux_it_tmp[k,-1])
-                
-# Derivation of sol on flux point give a grad on sol point 
-
-                    grad[icell, :] = np.dot(Deriv, sol_flux_it[icell,:])
-                    gradF[icell,:] = np.dot(Extrap,grad[icell,:])/J
-                
-# Treatment of interfaces with mean for diffusion
-                    grad_tmp = np.copy(gradF)
-                    for k in range(1,N):
-                        gradF[k,0] = 0.5*(grad_tmp[k,0]+grad_tmp[k-1,-1]) 
-                    for k in range(0,N-1):
-                        gradF[k,-1]= 0.5*(grad_tmp[k+1,0]+ grad_tmp[k,-1])
-                
-
-# Derivation of grad
-                    lapl[icell, :] = np.dot(Deriv, gradF[icell,:])
-                
-            sol = sol0 + dti *  alpha[ik]*(D*lapl-Dadv)
-        
-                
+            sol = sol0 + dti * alpha[ik]*dflux_it_cont[:,1:-1]
         
         if itime==niter:
             dt1=dt
@@ -318,12 +212,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
                 print "-----------------------------------------------"
                 print "Iteration:"+str(itime)+ ",Time: " + str((itime + 1)*dt) + "/" + str(niter*dt+dtfin)
 
-    
-
-
-
-
-# to reshape the matrix into a vector '''
+    # to reshape the matrix into a vector '''
 
     solPointMesh = solPointMesh.reshape((p + 1) * N)
     sol = sol.reshape(((p + 1) * N))
@@ -336,18 +225,143 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
     solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
     return solPointMesh00, sol00,solPointMesh, sol, niter
 
-
-
-
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-
+#==============================================================================
+#             ########################################
+#             
+#             ''' -> pas sûr que ce soit nécessaire (extrapolation + Undersampling...) (AS)
+#                 # Lagrangian interpolation of the complete flux (RP)
+#                 flux_Dd2[icell,:]=np.dot(Extrap2,flux_Dd[icell,:])
+#             
+#                 # Undersampling of the  flux (RP)
+#                 del flux_Dd2[icell,0]
+#                 del flux_Dd2[icell,p+2]
+#                 flux[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
+#             '''
+# 
+# 
+# 
+# '''
+# 
+# 
+#         # Extrapolation of solution on borders (RP)
+#             sol_it_tmp = np.copy(sol_it) 
+#             
+#             sol_it[icell,0] = 0.5*(sol_it_tmp[icell,0]+sol_it_tmp[icell-1,p+2])
+#             sol_it[icell,p+2]= 0.5*(sol_it_tmp[icell+1,0]+ sol_it_tmp[icell,p+2])
+#                     
+#     # Lagrangian interpolation of the complete solution (RP)                
+#             sol_flux_p2[icell,:]=np.dot(Extrap2,sol_flux_it[icell,:])
+#             
+#     # Auxiliary variable computation (RP)
+#             aux_var2_it[icell,:] = np.dot(Deriv2,sol_flux_it[icell,:])
+#             
+#     # Undersampling of the auxiliary variable (RP)
+#             del aux_var2_it[icell,0]
+#             del aux_var2_it[icell,p+2]
+#             aux_var_it[icell,:] = np.dot(Extrap,aux_var2_it[icell,:])
+#             
+#             
+#     '''
+#     
+# # TOFINISH (RP)
+# 
+# 
+# ################################################################################################################### Version SD ci-dessous (RP)
+# 
+# ''' bullship spoiler down below !
+# #loop on number of cells
+#             for icell in range(N):
+#                 
+# # real domain to isoparametric dimension 
+#                 #Jacobian in 1D
+#                 J=dx[0]/2 # pussy -> c'est dx[icell] qu'il faut utiliser !
+#                 sol_it= sol/J #cela n'a pas d'interet ! c'est sur les distances qu'il faut utiliser le jacobien...
+#                 
+#                 
+# # Extrapolation of solution on fluxes [= solutions (RP)] points -> ne sert à rien ! car les points sont confondus avec les solpoint, donc valent zéro partout sauf au point considéré
+#                 sol_flux_it[icell,:]=np.dot(Extrap,sol_it[icell,:]) # Si c'est bien le produit matriciel que je pense alors les 
+#                                                                     #lagrangiens doivent etre ranges de manière à avoir les valeurs 
+#                                                                     #en les points intérieurs sur les colonnes de Extrap cf en dessous AS
+#                 
+#     # Les CL sont à l'interieur de la boucle parce que sinon on a un problème de dimensions avec la ligne ci-dessus (RP)
+#                 if bcondL==0:
+#                     sol_flux_it[0,0]=Yl/J
+#                 elif bcondL==1:
+#                     sol_flux_it[0,0]=sol_flux_it[-1,-1]    
+#                 if bcondR==0:
+#                     sol_flux_it[-1,-1]=Yr/J
+#                 elif bcondL==1:
+#                     sol_flux_it[-1,-1]=sol_flux_it[0,0]
+#                     
+#    
+#     # MAYBE USELESS : TOCHECK (RP)                  
+# #        # ADVECTION  Computation of fluxes at flux points : for advection F=cY
+# #                
+# #                if (method!=1):
+# #                    flux_it=c*sol_flux_it
+# #
+# ## isoparametric dimension to real domain not necessary in 1D
+# #                    flux = flux_it
+# ##*J**(-1)*J
+# 
+# 
+# 
+# # Treatment of interfaces with upwind scheme  for Advection
+#                     for k in range(1,N):
+#                         flux[k,0]=flux[k-1,-1] # Continuité du flux à gauche. Probablement pas utile pour DFR (RP)
+#                
+#                 
+# # real domain to isoparametric transformation non necessary in 1D
+#                 #flux_it = flux
+# #/(J**(-1)*J)
+# 
+# 
+# #Derivation of sol on flux point with Deriv 
+#    
+#  #                   Dadv[icell, :] = np.dot(Deriv, flux_it[icell,:]) # calcul de df/dx , soit notre q
+# 
+#                 #DIFFUSION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# 
+# # Treatment of interfaces with mean for diffusion
+#                 if (method !=0):
+#                     sol_flux_it_tmp = np.copy(sol_flux_it)
+#                     for k in range(1,N):
+#                         sol_flux_it[k,0] = 0.5*(sol_flux_it_tmp[k,0]+sol_flux_it_tmp[k-1,-1]) 
+#                     for k in range(0,N-1):
+#                         sol_flux_it[k,-1]= 0.5*(sol_flux_it_tmp[k+1,0]+ sol_flux_it_tmp[k,-1])
+#                 
+# # Derivation of sol on flux point give a grad on sol point 
+# 
+#                     grad[icell, :] = np.dot(Deriv, sol_flux_it[icell,:])
+#                     gradF[icell,:] = np.dot(Extrap,grad[icell,:])/J
+#                 
+# # Treatment of interfaces with mean for diffusion
+#                     grad_tmp = np.copy(gradF)
+#                     for k in range(1,N):
+#                         gradF[k,0] = 0.5*(grad_tmp[k,0]+grad_tmp[k-1,-1]) 
+#                     for k in range(0,N-1):
+#                         gradF[k,-1]= 0.5*(grad_tmp[k+1,0]+ grad_tmp[k,-1])
+#                 
+# 
+# # Derivation of grad
+#                     lapl[icell, :] = np.dot(Deriv, gradF[icell,:])
+#    '''             
+#             #sol = sol0 + dti *  alpha[ik]*(D*lapl-Dadv)
+# 
+# 
+# 
+# 
+# 
+# 
+# ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+# 
+# 
+#==============================================================================
 
 '''Part 1 Position of points and mesh of the domain'''
 
 def solPointGen(p):
-''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
+    ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
     solPoint = np.zeros(p+1)
     for i in range(len(solPoint)):
         solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1))) # Peut-être qu'il faut faire solPoint[i+1], not sure --> Nope, c'est correct car en python on commence à 0
@@ -423,14 +437,14 @@ def Extrap2Gen(p): #TODO, à optimiser : il n'y a que sur les interfaces que les
     solPoint = solPointGen(p) # A optimiser : on peut le generer 1! fois AS
 
     #Ajout des bords aux points solutions
-    solPoint.insert(0,-1) 
-    solPoint.append(1)
+    cellPoint = np.insert(solPoint,0,-1) 
+    cellPoint = np.append(cellPoint,1)
 
     Extrap=np.zeros([p+3,p+1]); #Extrapolation of p+1 LagPol to p+3 points
     for i in range(p+3):
         for j in range(p+1):
-            Extrap[i,j]=lagrange(solPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
-            Extrap[i,j]=lagrange(solPoint[i],solPoint,j); 
+            Extrap[i,j]=lagrange(cellPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
+            Extrap[i,j]=lagrange(cellPoint[i],solPoint,j); 
    
     return Extrap
 
@@ -479,15 +493,17 @@ def lagrangeDerivative(x, i, xi):
     res = 1.0
     somme = 0
     if x in xi:
-        ind = np.linspace(1,len(xi),len(xi))
+        ind = np.linspace(0,len(xi)-1,len(xi))
         ind = int(ind[x==xi])
         for s in range(len(xi)):
             if i != s and ind != s:
                 res = res * (x - xi[s]) / (xi[i] - xi[s])
-                #somme = somme + 1/(x -xi[s])
+                somme = somme + 1/(x -xi[s])
         #der = somme*res
-        der = res / (x[s]-x[ind]) # AS -> il me semble qu'il y avait une erreur avec la "somme" ou alors des computations inutiles !
-        
+        if(i != ind):
+            der = res / (xi[i]-xi[ind]) # AS -> il me semble qu'il y avait une erreur avec la "somme" ou alors des computations inutiles !
+        else:
+            der = somme*res  
     else:
         for s in range(len(xi)):
             if i != s:
@@ -532,19 +548,18 @@ def D2Gen(p, phi=1.0):    #RP
     ''' phi = 1.0 <=> upwind  flux '''
     ''' phi = 0.0 <=> centred flux '''
 
-    ns = p+3
     solPoint = solPointGen(p)
     #solPoint[0] = -1.0 #--> Incorrect : il ne s'agit pas de remplacer mais bien D'AJOUTER les abscisses aux interfaces !
     #solPoint[p+2] = 1.0
 
     # Addition of interface points 
-    solPoint.insert(0,-1.0)
-    solPoint.append(1.0)
+    solPoint = np.insert(solPoint,0,-1) 
+    solPoint = np.append(solPoint,1)
 
     ''' Compute the derivatives matrix '''
-    D = np.zeros([ns, ns])
-    for i in range(ns):
-        for j in range(ns):
+    D = np.zeros([p+3, p+3])
+    for i in range(p+3):
+        for j in range(p+3):
             D[i, j] = lagrangeDerivative(solPoint[i], j, solPoint) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
     return D
 
@@ -600,6 +615,12 @@ def interpolation(solPointMesh, sol, p, h,dx,Ncell):
     xinterp = xinterp.reshape(xinterp.shape[0]*xinterp.shape[1])
     yinterp = yinterp.reshape(yinterp.shape[0]*yinterp.shape[1])
     return xinterp, yinterp
+    
+def display(x,y,p,dx,N):
+    '''Display y(x) with a higher resolution'''
+    h=1000
+    xx,yy=interpolation(x,y,p+2,h,dx,N)
+    plt.plot(xx,yy, 'r-')
 
 def RKgamma(order):
     ''' Runge-Kutta coefficients for time integration '''
