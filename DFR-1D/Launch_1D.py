@@ -35,24 +35,25 @@ c      =  10.
 D      = 0.
 
 #Initialization 
-# init=0 --> Gaussian law (AVBP QPF)
-#init=1 --> Rectangular step with erf function
+# init='Gauss' --> Gaussian law 
+#init='Constant' --> Constant law 
+# init = 'Triangle' --> Linear Tipi law
+#init='RectErf'--> Rectangular step with erf function
 
-init=0
+init='Gauss'
 # Gradient for initialize the erf 
 grad_init=10**(-12)
 
 #boundary conditions on the left side bcondL and the right side bcondR
 #bcond*=0 for a Dirichlet BC
 #bcond*=1 for a periodic BC
-bcondL=0
-bcondR=0
+bcond = 1;
 # If Dirichlet conditions specify values
 yL=0
 yR=0
 
 ### Computating solution
-x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,yL,yR)
+x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond))
 
 
 

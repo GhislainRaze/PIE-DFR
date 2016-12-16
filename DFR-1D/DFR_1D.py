@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -87,8 +87,12 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
     sol =np.zeros([len(solPointMesh),len(solPointMesh[0])])
     for i in range(len(solPointMesh)):
         for j in range(len(solPointMesh[0])):
-            if init==0: # u0 = gaussienne 
+            if init=='Gauss': # u0 = gaussienne 
                 sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001) #Calcul des points flux. USELESS FOR DFR (RP) --> il s'agit plutot de la solution initiale (Gaussienne) ! 
+            elif init=='Constant': #u0 = cst
+                sol[i,j] = 10
+            elif init=='Triangle': #u0 = __/\__
+                sol[i,j] = 0 #TODO
             elif init==1: # u0 = fonction erreur
                 if 0==0:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
@@ -148,20 +152,27 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 
             for icell in range(1,N-1): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-            sol_it_p2[0,0] = bcondL
-            sol_it_p2[-1,-1] = bcondR
+            sol_it_p2[0,0] = bcond*sol_it_p2[0,0]+Yl
+            sol_it_p2[-1,-1] = bcond*sol_it_p2[0,0]+Yr
 
-            for icell in range(N): #Cell loop                
+            for icell in range(N): #Cell loop
 
-                # Interface common solution points (AS) = Extrapolation of solution on borders (RP)
-                if(icell != 0):
-                    sol_common_left = 0.5*(sol_it_p2[icell-1,-1] + sol_it_p2[icell,0])
-                else:
-                    sol_common_left = bcondL
-                if(icell != N-1):
-                    sol_common_right = 0.5*(sol_it_p2[icell,-1] + sol_it_p2[icell+1,0])
-                else:
-                    sol_common_right = bcondR
+                if(D==0):# Interface common solution points (AS) = Extrapolation of solution on borders (RP)
+                    if(c>0)
+                        sol_common_left = sol_it_p2[icell-1,-1]
+                        sol_common_right = sol_it_p2[icell,-1]
+                    elif(c<0)
+                        sol_common_left = sol_it_p2[icell,0]
+                        sol_common_right = sol_it_p2[icell+1,0]
+                else:                                
+                    if(icell != 0):
+                        sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
+                    else:
+                        sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
+                    if(icell != N-1):
+                        sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
+                    else:
+                        sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
 
                 # Lagrangian interpolation of the complete solution (RP)             
                 sol_it_cont[icell,:] = sol_it_p2[icell,:]
@@ -202,7 +213,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
                 # Flux Derivative
                 dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_cont[icell,:])/J_i
             
-            sol = sol0 + dti * alpha[ik]*dflux_it_cont[:,1:-1]
+            sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,1:-1]
         
         if itime==niter:
             dt1=dt
@@ -664,3 +675,11 @@ def RKalpha6optim(p):
             alpha[0]=0.07268810031422
             alpha[1]=0.16368178688643
     return alpha
+
+    def sign(x)
+        s = 0
+        if (x>0):
+            s = 1
+        elif (x<0):
+            s = -1
+        return (s)
