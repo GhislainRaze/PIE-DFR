@@ -13,18 +13,14 @@ import DFR_1D
 ### Parameters
 
 # SD order
-<<<<<<< HEAD
-p       =  3
-=======
-p       =  2
->>>>>>> refs/remotes/origin/master
+p       =  4
 
 #Solver
 # method=0 for Convection  !!!! c=/0!!!
 # method=1 for Diffusion
 #method=2 for Convection+Diffusion
 
-<<<<<<< HEAD
+
 #method=    0 -> Pas besoin de ça (AS)
 
 
@@ -33,7 +29,6 @@ CFL=       0.7
 
 #Final time
 Tfin   = 0.002 
-=======
 #method =  0
 
 
@@ -41,17 +36,12 @@ Tfin   = 0.002
 CFL=       0.5
 
 #Final time
-Tfin   = 0.05
->>>>>>> refs/remotes/origin/master
+Tfin   = 0.005
 
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c      =  10.
-<<<<<<< HEAD
-D      = 0.
-=======
 D      = 0. #2.5e-5
->>>>>>> refs/remotes/origin/master
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -59,11 +49,8 @@ D      = 0. #2.5e-5
 # init = 'Triangle' --> Linear Tipi law
 #init='RectErf'--> Rectangular step with erf function
 
-<<<<<<< HEAD
+
 init='Gauss'
-=======
-init='Constant'
->>>>>>> refs/remotes/origin/master
 # Gradient for initialize the erf 
 grad_init=10**(-12)
 
@@ -75,7 +62,7 @@ bcond = 1;
 yL=0
 yR=0
 
-### Computating solution
+### Computing solution
 x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond))
 
 
@@ -92,28 +79,27 @@ file.close()
 file = open("results_CFL="+str(CFL)+"_p="+str(p)+".txt", "w")   
 yth=np.zeros(len(x))
 for i in range(len(x)):
-    if init==0:
+    if init=='Gauss':
         yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(x[i]-c*Tfin+0.1)**2/(4*D*Tfin+0.0001))
-    elif init==1:
+    elif init=='Constant':
+        yth[i] = 10. 
+    elif init=='RectErft':
         if method==0:
             yth[i]=(1-m.erf((x[i]-c*(Tfin+grad_init))))/2
         else:
             yth[i]=(1-m.erf((x[i]-c*(Tfin+grad_init))/(2*m.sqrt(D*(Tfin+grad_init)))))/2
-    
-    file.write(str(x[i])+",")
-    file.write(str(yth[i])+",")
-    file.write(str(sol[i]) + "\n")
 
 file.close()
 
 
+#for i in range(len(x)):
+#    print sol0[i]
+
 ### Solution plotting
 plt.plot(x0,sol0,'k-')
 plt.plot(x,sol, 'r-')
-plt.plot(x,yth, 'b-')
+plt.plot(x,yth, 'b--')
 plt.legend(['Initial', 'Convected','Theoretical'])
 plt.show()
-<<<<<<< HEAD
 
-=======
->>>>>>> refs/remotes/origin/master
+
