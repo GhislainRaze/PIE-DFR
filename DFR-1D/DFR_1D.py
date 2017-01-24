@@ -39,7 +39,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     Npoints=(p+1)*N
 
     #Space step
-    dx1=L/N
+    dx1=L/(N*(p+1))                                             # dx1 != taille d'une cellule ? En tout cas x va de -L/2 a L/2 maintenant (GR)
     dx=np.linspace(dx1*(p+1),dx1*(p+1),N) #Cell step AS
     
     # Penalizing parameter
@@ -252,9 +252,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     
 # final number of points for interpolation
     h=1000
-    solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
-    solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
-    return solPointMesh00, sol00,solPointMesh, sol, niter
+    #solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
+    #solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        -> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    return solPointMesh00, sol00, solPointMesh, sol, niter
 
 
 
