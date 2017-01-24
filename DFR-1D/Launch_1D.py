@@ -13,13 +13,27 @@ import DFR_1D
 ### Parameters
 
 # SD order
+<<<<<<< HEAD
+p       =  3
+=======
 p       =  2
+>>>>>>> refs/remotes/origin/master
 
 #Solver
 # method=0 for Convection  !!!! c=/0!!!
 # method=1 for Diffusion
 #method=2 for Convection+Diffusion
 
+<<<<<<< HEAD
+#method=    0 -> Pas besoin de ça (AS)
+
+
+# Stability criterion : CFL 
+CFL=       0.7
+
+#Final time
+Tfin   = 0.002 
+=======
 #method =  0
 
 
@@ -28,11 +42,16 @@ CFL=       0.5
 
 #Final time
 Tfin   = 0.05
+>>>>>>> refs/remotes/origin/master
 
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c      =  10.
+<<<<<<< HEAD
+D      = 0.
+=======
 D      = 0. #2.5e-5
+>>>>>>> refs/remotes/origin/master
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -40,7 +59,11 @@ D      = 0. #2.5e-5
 # init = 'Triangle' --> Linear Tipi law
 #init='RectErf'--> Rectangular step with erf function
 
+<<<<<<< HEAD
+init='Gauss'
+=======
 init='Constant'
+>>>>>>> refs/remotes/origin/master
 # Gradient for initialize the erf 
 grad_init=10**(-12)
 
@@ -90,3 +113,7 @@ plt.plot(x,sol, 'r-')
 plt.plot(x,yth, 'b-')
 plt.legend(['Initial', 'Convected','Theoretical'])
 plt.show()
+<<<<<<< HEAD
+
+=======
+>>>>>>> refs/remotes/origin/master
