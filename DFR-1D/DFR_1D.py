@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
  # Space domain
     
     #Number of cells
-    N=10	 #In case not enough points for order p, decrease in the number of cells ? AS
+    N=40     #In case not enough points for order p, decrease in the number of cells ? AS
     
     # Domain Length
     L = 1.0
@@ -104,7 +104,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
     
     #sol = solPointMesh #(RP) --> why ? solPointMesh est la matrice des noeuds en abscisse !
-    
 #Used for the runge kutta loop
     sol0 = np.copy(sol)
 #Used for comp.py
@@ -122,7 +121,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     flux_it_int = np.zeros([N,p+1]) # Flux on solution points = flux_d (AS)
     flux_it_p2 = np.zeros([N,p+3]) # Flux on solution and interface points = flux_Dd (AS)
     flux_it_cont = np.zeros([N,p+3]) # Reconstructed continuous flux = flux_Dd2 (AS)
-    dflux_it_cont = np.zeros([N,p+3]) # Reconstructed flux derivative = flux_Dd2 (AS)
+    dflux_it_cont = np.zeros([N,p+1]) # Reconstructed flux derivative = flux_Dd2 (AS)
 
 # RP   grad=np.zeros([N,p+1])
 #    gradF=np.zeros([N,p+2])
@@ -148,70 +147,74 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
 
         sol0 =np.copy(sol)
+        print "sol0",sol0[:,:]
         
 #Range Kutta loop '''
         for ik in range(len(alpha)):
 
             sol_it = np.copy(sol);
 
-            for icell in range(1,N-1): #Extrapolation of solutions on interfaces        
+            for icell in range(0,N): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
             
+            print "sol_it_p2",sol_it_p2[:,:]
+
 #Here apply BC, except for periodic
-	    if(bcond==0):
- 	        sol_it_p2[0,0] = Yl
-                sol_it_p2[-1,-1] = Yr
-	   
-	        # First cell
-	        flux_it_p2[0,:] = c*sol_it_p2[0,:]
+        if(bcond==0):
+            sol_it_p2[0,0] = Yl
+            sol_it_p2[-1,-1] = Yr
+       
+            # First cell
+            flux_it_p2[0,:] = c*sol_it_p2[0,:]
 
-	        # Last cell
-	        flux_it_p2[N-1,:] = c*sol_it_p2[N-1,:]
+            # Last cell
+            flux_it_p2[N-1,:] = c*sol_it_p2[N-1,:]
 
 
-	        # Internal cells
-	        for icell in range(1,N-1): #Cell loop
+            # Internal cells
+            for icell in range(1,N-1): #Cell loop
 
-	            if(D==0):# Flux computation + Riemann solver
-	                flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-		        if(c>0):
-	                    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-	                elif(c<0):
-	                    flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
-		    else:
-			print "Diffusion not implemented"
+                if(D==0.):# Flux computation + Riemann solver
+                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+                    if(c>0):
+                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                    elif(c<0):
+                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                else:
+                    print "Diffusion not implemented"
                          
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
-                    	#else:
+                        #else:
                             #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
-                    	#if(icell != N-1):
+                        #if(icell != N-1):
                             #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
-                    	#else:
+                        #else:
                             #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
 
 
- 	    else:
-	        # Internal and boundary cells
-	        for icell in range(0,N): #Cell loop
+        else:
+            # Internal and boundary cells
+            for icell in range(0,N): #Cell loop
 
-	            if(D==0):# Flux computation + Riemann solver
-	                flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-		        if(c>0):
-	                    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-	                elif(c<0):
-	                    flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                if(D==0.):# Flux computation + Riemann solver
+                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+
+                    if(c>0):
+                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                    elif(c<0):
+                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
                  
-		    else:
-			print "Diffusion not implemented"
+                else:
+                    print "Diffusion not implemented"
                          
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
-                    	#else:
+                        #else:
                             #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
-                    	#if(icell != N-1):
+                        #if(icell != N-1):
                             #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
-                    	#else:
+                        #else:
                             #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
 
                 
@@ -224,7 +227,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                 #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
 
                 # Solution derivative
-                #J_i = dx[icell]*0.5
+                J_i = dx[icell]*0.5
                 #dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
 
                 # Undersampling of the auxiliary variable (RP)
@@ -232,16 +235,16 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                 #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
 
                 # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
-                flux_it_p2[icell,:] = flux_it_p2[icell,:] - D*dsol_it_cont[icell,:] 
+                flux_it_p2[icell,:] = flux_it_p2[icell,:] #- D*dsol_it_cont[icell,:] 
 
                 # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
                 #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
 
-            
+                print flux_it_p2[icell,:]
                 # Flux Derivative
                 dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
             
-            sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,1:-1]
+            sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,:]
         
         if itime==niter:
             dt1=dt
@@ -484,7 +487,7 @@ def Extrap2Gen(p): #TODO, à optimiser : il n'y a que sur les interfaces que les
         for j in range(p+1):
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); 
-   
+    print Extrap[:,:]
     return Extrap
 
 
@@ -596,10 +599,10 @@ def D2Gen(p, phi=1.0):    #RP
     solPoint = np.append(solPoint,1)
 
     ''' Compute the derivatives matrix '''
-    D = np.zeros([p+3, p+3])
-    for i in range(p+3):
+    D = np.zeros([p+1, p+3])
+    for i in range(p+1):
         for j in range(p+3):
-            D[i, j] = lagrangeDerivative(solPoint[i], j, solPoint) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
+            D[i, j] = lagrangeDerivative(solPoint[i+1], j, solPoint) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
     return D
 
 ''' Part 5 Runge Kutta'''
