@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
  # Space domain
     
     #Number of cells
-    N=40     #In case not enough points for order p, decrease in the number of cells ? AS
+    N=20     #In case not enough points for order p, decrease in the number of cells ? AS
     
     # Domain Length
     L = 1.0
@@ -304,6 +304,21 @@ def lagrange(x,xi,i):
         if i != s:
             res = res * (x - xi[s]) / (xi[i] - xi[s])
     return res
+
+def ExtrapGen(p): # Fonction sans intérêt : on extrapole sur les points solutions -> matrice diagonale !
+    ''' Extrapolation through lagrange polynomials on p+1 points '''
+    ns = p+1
+    solPoint = solPointGen(p) # A optimiser : on peut le generer 1! fois AS
+
+    #RP nf = p+2
+    #RP fluxPoint = fluxPointGen(p)
+
+    Extrap=np.zeros([ns,ns]); #(RP) ns + 1 ? -> on extrapole seulement apd des p+1 pour l'instant... AS
+    for i in range(ns):
+        for j in range(ns):
+            #Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j);
+            Extrap[i,j]=lagrange(solPoint[i],solPoint,j); # row = lagrange polynomial value on solpoint i | column = lagrange polynomial non zero on j
+    return Extrap
 
 def Extrap2Gen(p): 
     ''' Extrapolation matrix for the P+3 reconstruction with border terms ''' 
