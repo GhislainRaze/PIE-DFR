@@ -28,20 +28,24 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     alpha=RKalpha6optim(p)
 
  # Space domain
+    
+    #Number of cells
+    N=10	 #In case not enough points for order p, decrease in the number of cells ? AS
+    
+    # Domain Length
+    L = 1.0
 
     # DOF
-    Npoints=300
-    #Number of cells
-    N=int(Npoints/(p+1)+1) #In case not enough points for order p, decrease in the number of cells ? AS
+    Npoints=(p+1)*N
+
     #Space step
-    dx1=0.001
+    dx1=L/N
     dx=np.linspace(dx1*(p+1),dx1*(p+1),N) #Cell step AS
     
     # Penalizing parameter
     tau = 0.
 
     # Cells centered about -L/2 to +L/2 AS
-    L=np.sum(dx)
     x=np.zeros(N+1)
     x[0]=-N*dx[0]/2.0 
     for i in range(N):
@@ -53,14 +57,14 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
         exit()
     elif c==0.: # Diffusion AS
         print "Pure Diffusion"
-        dt = CFL*(dx1/((p+1)+1))**2 /D
+        dt = CFL*(dx1/(p+1))**2 /D
     elif D==0.: # Advection AS
         print "Pure Advection"
-        dt= CFL*dx1/((p+1)+1)/c
+        dt= CFL*dx1/(p+1)/c
     else: # Advection + Diffusion AS
         print "Advection with Diffusion"
         dtadv= CFL * min(dx) / (c*(p+1))
-        dtdiff=CFL*(min(dx)/((p+1)+1))**2 /D
+        dtdiff=CFL*(min(dx)/(p+1))**2 /D
         dt= min([dtadv,dtdiff])
     
     print 'dt='+ str(dt)
@@ -74,10 +78,10 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 #Mesh creation with gauss points on isoparametric cells
 
     solPoint = solPointGen(p)
-    cellPoint = np.insert(solPoint,0,-1)
-    cellPoint = np.append(cellPoint,1)
+    fluxPoint = np.insert(solPoint,0,-1)
+    fluxPoint = np.append(fluxPoint,1)
     solPointMesh = pointMeshGen(N,p, solPoint,dx,x)
-    cellPointMesh = pointMeshGen(N,p+2, cellPoint,dx,x)
+    fluxPointMesh = pointMeshGen(N,p+2, fluxPoint,dx,x)
     
     
 #Initial conditions
@@ -90,9 +94,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
             if init=='Gauss': # u0 = gaussienne 
                 sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001) #Calcul des points flux. USELESS FOR DFR (RP) --> il s'agit plutot de la solution initiale (Gaussienne) ! 
             elif init=='Constant': #u0 = cst
-                sol[i,j] = 10
+                sol[i,j] = 10.0
             elif init=='Triangle': #u0 = __/\__
-                sol[i,j] = 0 #TODO
+                sol[i,j] = 0.0 #TODO
             elif init==1: # u0 = fonction erreur
                 if 0==0:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
@@ -152,66 +156,90 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
             for icell in range(1,N-1): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-            sol_it_p2[0,0] = bcond*sol_it_p2[0,0]+Yl
-            sol_it_p2[-1,-1] = bcond*sol_it_p2[0,0]+Yr
+            
+#Here apply BC, except for periodic
+	    if(bcond==0):
+ 	        sol_it_p2[0,0] = Yl
+                sol_it_p2[-1,-1] = Yr
+	   
+	        # First cell
+	        flux_it_p2[0,:] = c*sol_it_p2[0,:]
 
-            for icell in range(N): #Cell loop
+	        # Last cell
+	        flux_it_p2[N-1,:] = c*sol_it_p2[N-1,:]
 
-                if(D==0):# Interface common solution points (AS) = Extrapolation of solution on borders (RP)
-                    if(c>0):
-                        sol_common_left = sol_it_p2[icell-1,-1]
-                        sol_common_right = sol_it_p2[icell,-1]
-                    elif(c<0):
-                        sol_common_left = sol_it_p2[icell,0]
-                        sol_common_right = sol_it_p2[icell+1,0]
-                else:                                
-                    if(icell != 0):
-                        sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
-                    else:
-                        sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
-                    if(icell != N-1):
-                        sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
-                    else:
-                        sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
+
+	        # Internal cells
+	        for icell in range(1,N-1): #Cell loop
+
+	            if(D==0):# Flux computation + Riemann solver
+	                flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+		        if(c>0):
+	                    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+	                elif(c<0):
+	                    flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+		    else:
+			print "Diffusion not implemented"
+                         
+                        #if(icell != 0):
+                            #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
+                    	#else:
+                            #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
+                    	#if(icell != N-1):
+                            #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
+                    	#else:
+                            #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
+
+
+ 	    else:
+	        # Internal and boundary cells
+	        for icell in range(0,N): #Cell loop
+
+	            if(D==0):# Flux computation + Riemann solver
+	                flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+		        if(c>0):
+	                    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+	                elif(c<0):
+	                    flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                 
+		    else:
+			print "Diffusion not implemented"
+                         
+                        #if(icell != 0):
+                            #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
+                    	#else:
+                            #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
+                    	#if(icell != N-1):
+                            #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
+                    	#else:
+                            #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
+
+                
 
                 # Lagrangian interpolation of the complete solution (RP)             
-                sol_it_cont[icell,:] = sol_it_p2[icell,:]
-                sol_it_cont[icell,0] = sol_common_left
-                sol_it_cont[icell,-1] = sol_common_right
+                #sol_it_cont[icell,:] = sol_it_p2[icell,:]
+                #sol_it_cont[icell,0] = sol_common_left
+                #sol_it_cont[icell,-1] = sol_common_right
 
-                #display(cellPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
+                #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
 
                 # Solution derivative
-                J_i = dx[icell]*0.5
-                dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
+                #J_i = dx[icell]*0.5
+                #dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
 
                 # Undersampling of the auxiliary variable (RP)
                 #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
                 #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
 
                 # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
-                flux_it_p2[icell,:] = c*sol_it_p2[icell,:] - D*dsol_it_cont[icell,:] 
+                flux_it_p2[icell,:] = flux_it_p2[icell,:] - D*dsol_it_cont[icell,:] 
 
                 # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
                 #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
 
             
-                # Interface Common Flux computation
-                if(icell != 0):
-                    flux_common_left = 0.5*(flux_it_p2[icell,0] + flux_it_p2[icell-1,p+2]) + tau*(sol_it_p2[icell-1,p+2] - sol_it_p2[icell,0])
-                else:
-                    flux_common_left = 0.
-                if(icell != N-1):
-                    flux_common_right = 0.5*(flux_it_p2[icell+1,0] + flux_it_p2[icell,p+2]) + tau*(sol_it_p2[icell,p+2] - sol_it_p2[icell+1,0])
-                else:
-                    flux_common_right = 0.
-
-                flux_it_cont[icell,:] = flux_it_p2[icell,:]
-                flux_it_cont[icell,0] = flux_common_left
-                flux_it_cont[icell,-1] = flux_common_right
-
                 # Flux Derivative
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_cont[icell,:])/J_i
+                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
             
             sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,1:-1]
         
@@ -448,14 +476,14 @@ def Extrap2Gen(p): #TODO, à optimiser : il n'y a que sur les interfaces que les
     solPoint = solPointGen(p) # A optimiser : on peut le generer 1! fois AS
 
     #Ajout des bords aux points solutions
-    cellPoint = np.insert(solPoint,0,-1) 
-    cellPoint = np.append(cellPoint,1)
+    fluxPoint = np.insert(solPoint,0,-1) 
+    fluxPoint = np.append(fluxPoint,1)
 
     Extrap=np.zeros([p+3,p+1]); #Extrapolation of p+1 LagPol to p+3 points
     for i in range(p+3):
         for j in range(p+1):
-            Extrap[i,j]=lagrange(cellPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
-            Extrap[i,j]=lagrange(cellPoint[i],solPoint,j); 
+            Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
+            Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); 
    
     return Extrap
 
