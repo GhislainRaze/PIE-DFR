@@ -13,10 +13,10 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       =  3
+p       =  5
 
 # Stability criterion : CFL 
-CFL=       0.01                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL=       0.5
 
 #Final time
 Tfin   = 0.05
@@ -24,7 +24,7 @@ Tfin   = 0.05
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c      =  10.
-D      =  2.5e-3    
+D      = 0. #2.5e-5
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -32,7 +32,7 @@ D      =  2.5e-3
 # init = 'Triangle' --> Linear Tipi law
 #init='RectErf'--> Rectangular step with erf function
 
-init='Gauss'
+init='Constant'
 
 
 # Gradient for initialize the erf 
@@ -75,10 +75,10 @@ for i in range(len(x)):
 
 file.close()
 
-#print 'Solution initiale'
-#print sol0
-#print 'Solution calculee'
-#print sol
+print 'Solution initiale'
+print sol0
+print 'Solution calculee'
+print sol
 
 #for i in range(len(x)):
 #    print sol0[i]

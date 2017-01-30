@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
  # Space domain
     
     #Number of cells
-    N = 30     #In case not enough points for order p, decrease in the number of cells ? AS
+    N=30     #In case not enough points for order p, decrease in the number of cells ? AS
     
     # Domain Length
     L = 1.0
@@ -48,7 +48,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
-    x[0]=-0.5*N*dx[0] 
+    x[0]=-N*dx[0]/2.0 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
 
@@ -127,6 +127,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
 # preparation for extrapolation (outside the loop: doesn't change inside)
     Extrap2 = Extrap2Gen(p) # Lagrange extrapolation matrix of order P+2
+    Interp2 = Interp2Gen(p)
     Deriv2 = D2Gen(p) # Lagrange derivative extrapolation matrix of order P+2
 
 #Time loop until niter+1 for the last iteration to reach Tfin
@@ -147,7 +148,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
             for icell in range(0,N): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-                sol_it_cont[icell,:] = sol_it_p2[icell,:]
             
             #print "sol_it_p2",sol_it_p2[:,:]
 
@@ -165,8 +165,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
             # Internal cells
             for icell in range(1,N-1): #Cell loop
-
-                J_i = dx[icell]*0.5
 
                 if(D==0.):# Flux computation + Riemann solver
                     flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
@@ -191,8 +189,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
             # Internal and boundary cells
             for icell in range(0,N): #Cell loop
 
-                J_i = dx[icell]*0.5
-
                 if(D==0.):# Flux computation + Riemann solver
                     flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
 
@@ -202,33 +198,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                         flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
                  
                 else:
-                    #print "Diffusion not implemented"
-                    sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
-                    if icell != N-1:    
-                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[icell+1,0])
-                    else:
-                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[0,0])
-
-                    
-                    dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
-                    dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])                            # L'interpolation-extrapolation parait bizarre mais c'est ce qui est mis dans l'article je pense (GR)
-
-                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-
-                    if(c>0):
-                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-                    elif(c<0):
-                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
-
-                    # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
-                    flux_it_p2[icell,1:-1] = flux_it_p2[icell,1:-1] - D*0.5*dsol_it_cont[icell,1:-1]
-
-                    flux_it_p2[icell,0] = flux_it_p2[icell,0] + tau*(sol_it[icell-1,-1]-sol_it[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0])
-                    if icell != N-1:    
-                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[icell+1,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[icell+1,0])
-                    else:
-                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[0,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[0,0])
-                    
+                    print "Diffusion not implemented"
+                         
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
                         #else:
@@ -248,21 +219,31 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                 #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
 
                 # Solution derivative
-                i
+                J_i = dx[icell]*0.5
+                #dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
 
                 # Undersampling of the auxiliary variable (RP)
                 #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
                 #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
 
                 # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
+                flux_it_p2[icell,:] = flux_it_p2[icell,:] #- D*dsol_it_cont[icell,:] 
 
                 # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
                 #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
 
                 #print flux_it_p2[icell,:]
                 # Flux Derivative
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i             # Undersampling : derivees non nulles pour les constantes !!!!! (AS & GR)
+                dflux_it_cont[icell,:] = np.dot(Interp2,flux_it_p2[icell,:])
                 
+
+                #print Deriv2
+                #print dflux_it_cont[icell,:]
+                #exit()
+
+                #dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i             # Undersampling : derivees non nulles pour les constantes !!!!! (AS & GR)
+                
+                #print dflux_it_cont
                
             sol = sol0 - dti * alpha[ik]*dflux_it_cont
         
@@ -442,7 +423,8 @@ def lagrangeDerivative(x, i, xi):
 
 ''' Part 4 Derivation of the flux'''
 
-def D2Gen(p, phi=1.0):    #RP
+
+def Interp2Gen(p, phi=1.0):    #GR
     ''' Compute d/dx discretization with '''
     ''' the Spectral Difference method order p '''
     ''' phi = 1.0 <=> upwind  flux '''
@@ -458,7 +440,28 @@ def D2Gen(p, phi=1.0):    #RP
     D = np.zeros([p+1, p+3])
     for i in range(p+1):
         for j in range(p+3):
-            D[i, j] = lagrangeDerivative(solPoint[i+1], j, solPoint) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
+            D[i, j] = lagrange(solPoint[i+1], solPoint,j) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
+    return D
+
+
+
+def D2Gen(p, phi=1.0):    #RP
+    ''' Compute d/dx discretization with '''
+    ''' the Spectral Difference method order p '''
+    ''' phi = 1.0 <=> upwind  flux '''
+    ''' phi = 0.0 <=> centred flux '''
+
+    solPoint = solPointGen(p)
+
+    # Addition of interface points 
+    #solPoint = np.insert(solPoint,0,-1) 
+    #solPoint = np.append(solPoint,1)
+
+    ''' Compute the derivatives matrix '''
+    D = np.zeros([p+1, p+1])
+    for i in range(p+1):
+        for j in range(p+1):
+            D[i, j] = lagrangeDerivative(solPoint[i], j, solPoint) # row = d(LagPol)/dx value on solpoint i | column = d(LagPol from j)/dx
     return D
 
 ''' Part 5 Runge Kutta'''
