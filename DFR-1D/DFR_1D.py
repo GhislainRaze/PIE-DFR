@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
  # Space domain
     
     #Number of cells
-    N=20     #In case not enough points for order p, decrease in the number of cells ? AS
+    N=50     #In case not enough points for order p, decrease in the number of cells ? AS
     
     # Domain Length
     L = 1.0
@@ -39,8 +39,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     Npoints=(p+1)*N
 
     #Space step
-    dx1=L/(N*(p+1))                                             # dx1 != taille d'une cellule ? En tout cas x va de -L/2 a L/2 maintenant (GR)
-    dx=np.linspace(dx1*(p+1),dx1*(p+1),N) #Cell step AS
+    dx1=L/N                                             # dx1 = uniform cell size (GR)
+    dx=np.linspace(dx1,dx1,N)                           # Cell step AS
+
     
     # Penalizing parameter
     tau = 0.
@@ -50,17 +51,18 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     x[0]=-N*dx[0]/2.0 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
-    
+
+
     #Calcul dt 
     if(c==0. and D==0.) :
         print "Eternal frost"
         exit()
     elif c==0.: # Diffusion AS
         print "Pure Diffusion"
-        dt = CFL*(dx1/(p+1))**2 /D
+        dt = CFL*(min(dx)/(p+1))**2 /D
     elif D==0.: # Advection AS
         print "Pure Advection"
-        dt= CFL*dx1/(p+1)/c
+        dt= CFL*min(dx)/(p+1)/c
     else: # Advection + Diffusion AS
         print "Advection with Diffusion"
         dtadv= CFL * min(dx) / (c*(p+1))
@@ -104,11 +106,11 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
     
 
+
 #Used for the runge kutta loop
     sol0 = np.copy(sol)
 #Used for comp.py
     sol00 = np.copy(sol)
-
 
 # Initialisation
     # Attention : la majorité des matrices sont temporelles et peuvent être initialisées dans la boucle sur les cellules pour gagner de l'espace mémoire vive ! (AS)
@@ -136,7 +138,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
             dti=dt
 
         sol0 =np.copy(sol)
-        print "sol0",sol0[:,:]
+        #print "sol0",sol0[:,:]
         
 #Range Kutta loop '''
         for ik in range(len(alpha)):
@@ -146,7 +148,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
             for icell in range(0,N): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
             
-            print "sol_it_p2",sol_it_p2[:,:]
+            #print "sol_it_p2",sol_it_p2[:,:]
 
 #Here apply BC, except for periodic
         if(bcond==0):
@@ -229,11 +231,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
                 # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
                 #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
 
-                print flux_it_p2[icell,:]
+                #print flux_it_p2[icell,:]
                 # Flux Derivative
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
-            
-            sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,:]
+                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i             # Undersampling : derivees non nulles pour les constantes !!!!! (AS & GR)
+                
+                print dflux_it_cont
+               
+            sol = sol0 - dti * alpha[ik]*dflux_it_cont
         
         if itime==niter:
             dt1=dt
@@ -251,9 +255,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     solPointMesh00=np.copy(solPointMesh)
     
 # final number of points for interpolation
-    h=1000
+    #h=1000
     #solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
-    #solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        -> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    #solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        #-> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    
+    
+
+
     return solPointMesh00, sol00, solPointMesh, sol, niter
 
 
@@ -333,7 +341,7 @@ def Extrap2Gen(p):
         for j in range(p+1):
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); 
-    print Extrap[:,:]
+    #print Extrap[:,:]
     return Extrap
 
 
@@ -379,24 +387,26 @@ def lagrangeDerivative(x, i, xi):
         xi : zeros of polynomial
         i = unimodular non-zero exception point index '''
     res = 1.0
-    somme = 0
+    somme = 0.0
     if x in xi:
         ind = np.linspace(0,len(xi)-1,len(xi))
         ind = int(ind[x==xi])
         for s in range(len(xi)):
             if i != s and ind != s:
                 res = res * (x - xi[s]) / (xi[i] - xi[s])
-                somme = somme + 1/(x -xi[s])
-        #der = somme*res
-        if(i != ind):
-            der = res / (xi[i]-xi[ind]) # AS -> il me semble qu'il y avait une erreur avec la "somme" ou alors des computations inutiles !
+                somme = somme + 1.0/(x -xi[s])
+            elif i != s:
+                res = res/ (xi[i] - xi[s])
+        if i != ind:        
+            der = res*(x-xi[ind])*somme + res
         else:
-            der = somme*res  
+            der = res*somme
+                
     else:
         for s in range(len(xi)):
             if i != s:
                 res = res * (x - xi[s]) / (xi[i] - xi[s])
-                somme = somme + 1/(x -xi[s])
+                somme = somme + 1.0/(x -xi[s])
         der = somme*res
         
     return der
