@@ -13,10 +13,10 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       =  5
+p       =  3
 
 # Stability criterion : CFL 
-CFL=       0.1                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL=       0.01                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
 Tfin   = 0.005
