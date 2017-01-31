@@ -62,8 +62,13 @@ bcond = 1;
 yL=0
 yR=0
 
+#Cell spacing :
+# cellmask = 'Regular' -> evenly spaced cells
+# cellmask = 'Irregular' -> unevenly customisable cell spacing
+cellmask = 'Irregular'
+
 ### Computing solution
-x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond))
+x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask)
 
 
 

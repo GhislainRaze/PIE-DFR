@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
  # Space domain
     
     #Number of cells
-    N=20     #In case not enough points for order p, decrease in the number of cells ? AS
+    N=20   
     
     # Domain Length
     L = 1.0
@@ -39,8 +39,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     Npoints=(p+1)*N
 
     #Space step
-    dx1=L/(N*(p+1))                                             # dx1 != taille d'une cellule ? En tout cas x va de -L/2 a L/2 maintenant (GR)
-    dx=np.linspace(dx1*(p+1),dx1*(p+1),N) #Cell step AS
+    dx = cellspacing(cellmask)
+    
     
     # Penalizing parameter
     tau = 0.
@@ -92,7 +92,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
     for i in range(len(solPointMesh)):
         for j in range(len(solPointMesh[0])):
             if init=='Gauss': # u0 = gaussienne 
-                sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001) #Calcul des points flux. USELESS FOR DFR (RP) --> il s'agit plutot de la solution initiale (Gaussienne) ! 
+                sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001)
             elif init=='Constant': #u0 = cst
                 sol[i,j] = 10.0
             elif init=='Triangle': #u0 = __/\__
@@ -111,7 +111,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr):
 
 
 # Initialisation
-    # Attention : la majorité des matrices sont temporelles et peuvent être initialisées dans la boucle sur les cellules pour gagner de l'espace mémoire vive ! (AS)
+    # Attention : la majorité des matrices sont temporaires et peuvent être initialisées dans la boucle sur les cellules pour gagner de l'espace mémoire vive ! (AS)
     sol_it = np.zeros([N,p+1]) # Values on solution points
     sol_it_p2 = np.zeros([N,p+3]) # Values on solution points and interface points = sol_it_tmp (AS)
     sol_it_cont = np.zeros([N,p+3]) # Continuous solution through interface points = sol_it (AS)
@@ -526,11 +526,25 @@ def RKalpha6optim(p):
             alpha[1]=0.16368178688643
     return alpha
 
-    def sign(x):
-        s = 0
-        if (x>0):
-            s = 1
-        elif (x<0):
-            s = -1
+def sign(x):
+    s = 0
+    if (x>0):
+        s = 1
+    elif (x<0):
+        s = -1
     return (s)
+
+def cellspacing(maskoption,L,N):
+    mask = np.ones(N)   #irregular cell size mask proportional to regular size
+    dx_reg = L/N # Regular cell spacing (AS)
+    if(maskoption=='Irregular'):
+        for i in range(N): #mask customization
+            if(i%2==0):
+                mask[i] = mask[i]*1.5
+            else:
+                mask[i] = mask[i]*0.5
+            
+    dx = mask*dx_reg
+    dx = dx*L/np.sum(dx) #normalisation to match the length of the domain
+    return dx
     
