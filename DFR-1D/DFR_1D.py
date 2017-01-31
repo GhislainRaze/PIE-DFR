@@ -31,6 +31,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     
     #Number of cells
     N=20   
+
     
     # Domain Length
     L = 1.0
@@ -39,28 +40,29 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     Npoints=(p+1)*N
 
     #Space step
-    dx = cellspacing(cellmask)
-    
+
+    dx = cellspacing(cellmask,L,N)
     
     # Penalizing parameter
     tau = 0.
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
-    x[0]=-N*dx[0]/2.0 
+    x[0]=-0.5*N*dx[0] 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
-    
+
+
     #Calcul dt 
     if(c==0. and D==0.) :
         print "Eternal frost"
         exit()
     elif c==0.: # Diffusion AS
         print "Pure Diffusion"
-        dt = CFL*(dx1/(p+1))**2 /D
+        dt = CFL*(min(dx)/(p+1))**2 /D
     elif D==0.: # Advection AS
         print "Pure Advection"
-        dt= CFL*dx1/(p+1)/c
+        dt= CFL*min(dx)/(p+1)/c
     else: # Advection + Diffusion AS
         print "Advection with Diffusion"
         dtadv= CFL * min(dx) / (c*(p+1))
@@ -104,11 +106,11 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
     
 
+
 #Used for the runge kutta loop
     sol0 = np.copy(sol)
 #Used for comp.py
     sol00 = np.copy(sol)
-
 
 # Initialisation
     # Attention : la majorité des matrices sont temporaires et peuvent être initialisées dans la boucle sur les cellules pour gagner de l'espace mémoire vive ! (AS)
@@ -136,7 +138,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
             dti=dt
 
         sol0 =np.copy(sol)
-        print "sol0",sol0[:,:]
+        #print "sol0",sol0[:,:]
         
 #Range Kutta loop '''
         for ik in range(len(alpha)):
@@ -145,8 +147,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
 
             for icell in range(0,N): #Extrapolation of solutions on interfaces        
                 sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
+                sol_it_cont[icell,:] = sol_it_p2[icell,:]
             
-            print "sol_it_p2",sol_it_p2[:,:]
+            #print "sol_it_p2",sol_it_p2[:,:]
 
 #Here apply BC, except for periodic
         if(bcond==0):
@@ -162,6 +165,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
 
             # Internal cells
             for icell in range(1,N-1): #Cell loop
+
+                J_i = dx[icell]*0.5
 
                 if(D==0.):# Flux computation + Riemann solver
                     flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
@@ -186,6 +191,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
             # Internal and boundary cells
             for icell in range(0,N): #Cell loop
 
+                J_i = dx[icell]*0.5
+
                 if(D==0.):# Flux computation + Riemann solver
                     flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
 
@@ -195,8 +202,33 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                         flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
                  
                 else:
-                    print "Diffusion not implemented"
-                         
+                    #print "Diffusion not implemented"
+                    sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
+                    if icell != N-1:    
+                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[icell+1,0])
+                    else:
+                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[0,0])
+
+                    
+                    dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
+                    dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])                            # L'interpolation-extrapolation parait bizarre mais c'est ce qui est mis dans l'article je pense (GR)
+
+                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+
+                    if(c>0):
+                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                    elif(c<0):
+                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+
+                    # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
+                    flux_it_p2[icell,1:-1] = flux_it_p2[icell,1:-1] - D*0.5*dsol_it_cont[icell,1:-1]
+
+                    flux_it_p2[icell,0] = flux_it_p2[icell,0] + tau*(sol_it[icell-1,-1]-sol_it[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0])
+                    if icell != N-1:    
+                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[icell+1,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[icell+1,0])
+                    else:
+                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[0,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[0,0])
+                    
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
                         #else:
@@ -216,24 +248,23 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                 #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
 
                 # Solution derivative
-                J_i = dx[icell]*0.5
-                #dsol_it_cont[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i
+                i
 
                 # Undersampling of the auxiliary variable (RP)
                 #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
                 #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
 
                 # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
-                flux_it_p2[icell,:] = flux_it_p2[icell,:] #- D*dsol_it_cont[icell,:] 
 
                 # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
                 #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
 
-                print flux_it_p2[icell,:]
+                #print flux_it_p2[icell,:]
                 # Flux Derivative
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
-            
-            sol = sol0 - dti * alpha[ik]*dflux_it_cont[:,:]
+                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i             # Undersampling : derivees non nulles pour les constantes !!!!! (AS & GR)
+                
+               
+            sol = sol0 - dti * alpha[ik]*dflux_it_cont
         
         if itime==niter:
             dt1=dt
@@ -251,9 +282,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     solPointMesh00=np.copy(solPointMesh)
     
 # final number of points for interpolation
-    h=1000
+    #h=1000
     #solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
-    #solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        -> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    #solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        #-> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    
+    
+
+
     return solPointMesh00, sol00, solPointMesh, sol, niter
 
 
@@ -333,7 +368,7 @@ def Extrap2Gen(p):
         for j in range(p+1):
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); # row = LagPol value on solpoint i | column = LagPol from j
             Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j); 
-    print Extrap[:,:]
+    #print Extrap[:,:]
     return Extrap
 
 
@@ -379,24 +414,26 @@ def lagrangeDerivative(x, i, xi):
         xi : zeros of polynomial
         i = unimodular non-zero exception point index '''
     res = 1.0
-    somme = 0
+    somme = 0.0
     if x in xi:
         ind = np.linspace(0,len(xi)-1,len(xi))
         ind = int(ind[x==xi])
         for s in range(len(xi)):
             if i != s and ind != s:
                 res = res * (x - xi[s]) / (xi[i] - xi[s])
-                somme = somme + 1/(x -xi[s])
-        #der = somme*res
-        if(i != ind):
-            der = res / (xi[i]-xi[ind]) # AS -> il me semble qu'il y avait une erreur avec la "somme" ou alors des computations inutiles !
+                somme = somme + 1.0/(x -xi[s])
+            elif i != s:
+                res = res/ (xi[i] - xi[s])
+        if i != ind:        
+            der = res*(x-xi[ind])*somme + res
         else:
-            der = somme*res  
+            der = res*somme
+                
     else:
         for s in range(len(xi)):
             if i != s:
                 res = res * (x - xi[s]) / (xi[i] - xi[s])
-                somme = somme + 1/(x -xi[s])
+                somme = somme + 1.0/(x -xi[s])
         der = somme*res
         
     return der

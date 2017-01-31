@@ -13,35 +13,18 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       =  4
-
-#Solver
-# method=0 for Convection  !!!! c=/0!!!
-# method=1 for Diffusion
-#method=2 for Convection+Diffusion
-
-
-#method=    0 -> Pas besoin de ça (AS)
-
+p       =  3
 
 # Stability criterion : CFL 
-CFL=       0.7
+CFL=       0.01                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
-Tfin   = 0.002 
-#method =  0
-
-
-# Stability criterion : CFL 
-CFL=       0.5
-
-#Final time
-Tfin   = 0.005
+Tfin   = 0.05
 
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c      =  10.
-D      = 0. #2.5e-5
+D      =  2.5e-3    
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -49,8 +32,9 @@ D      = 0. #2.5e-5
 # init = 'Triangle' --> Linear Tipi law
 #init='RectErf'--> Rectangular step with erf function
 
-
 init='Gauss'
+
+
 # Gradient for initialize the erf 
 grad_init=10**(-12)
 
@@ -96,6 +80,10 @@ for i in range(len(x)):
 
 file.close()
 
+#print 'Solution initiale'
+#print sol0
+#print 'Solution calculee'
+#print sol
 
 #for i in range(len(x)):
 #    print sol0[i]
