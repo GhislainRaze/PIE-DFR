@@ -30,7 +30,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
  # Space domain
     
     #Number of cells
-    N=20   
+    N=100   
 
     
     # Domain Length
@@ -44,38 +44,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     dx = cellspacing(cellmask,L,N)
     
     # Penalizing parameter
-    tau = 0.
+    tau = 10.
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
     x[0]=-0.5*N*dx[0] 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
-
-
-    #Calcul dt 
-    if(c==0. and D==0.) :
-        print "Eternal frost"
-        exit()
-    elif c==0.: # Diffusion AS
-        print "Pure Diffusion"
-        dt = CFL*(min(dx)/(p+1))**2 /D
-    elif D==0.: # Advection AS
-        print "Pure Advection"
-        dt= CFL*min(dx)/(p+1)/c
-    else: # Advection + Diffusion AS
-        print "Advection with Diffusion"
-        dtadv= CFL * min(dx) / (c*(p+1))
-        dtdiff=CFL*(min(dx)/(p+1))**2 /D
-        dt= min([dtadv,dtdiff])
-    
-    print 'dt='+ str(dt)
-    
-    niter = int(Tfin/dt)
-# Dt for the last step to reach Tfin if Tfin =/ niter*dt
-    dtfin=float(Tfin-niter*dt)
-    print 'dtfin='+str(dtfin)
-
 
 #Mesh creation with gauss points on isoparametric cells
 
@@ -84,6 +59,36 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
     fluxPoint = np.append(fluxPoint,1)
     solPointMesh = pointMeshGen(N,p, solPoint,dx,x)
     fluxPointMesh = pointMeshGen(N,p+2, fluxPoint,dx,x)
+
+    dxmin = min(dx)*min(min(np.abs(fluxPoint-np.roll(fluxPoint,1))),min(np.abs(fluxPoint-np.roll(fluxPoint,-1))))/2
+
+
+    #Calcul dt 
+    if(c==0. and D==0.) :
+        print "Eternal frost"
+        exit()
+    elif c==0.: # Diffusion AS
+        print "Pure Diffusion"
+        dt = CFL*(dxmin)**2 /D
+    elif D==0.: # Advection AS
+        print "Pure Advection"
+        dt= CFL*dxmin/c
+    else: # Advection + Diffusion AS
+        print "Advection with Diffusion"
+        dtadv= CFL * dxmin / c
+        dtdiff=CFL*dxmin**2 /D
+        dt= min([dtadv,dtdiff])
+    
+    print 'dt='+ str(dt)
+
+    
+    niter = int(Tfin/dt)
+# Dt for the last step to reach Tfin if Tfin =/ niter*dt
+    dtfin=float(Tfin-niter*dt)
+    print 'dtfin='+str(dtfin)
+
+
+
     
     
 #Initial conditions
@@ -104,6 +109,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
                 else:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
+            elif init=='Sine':
+                sol[i,j]=m.cos(5*2*np.pi*solPointMesh[i,j]) 
     
 
 
@@ -199,15 +206,12 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                     if(c>0):
                         flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
                     elif(c<0):
-                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                        flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
                  
                 else:
                     #print "Diffusion not implemented"
                     sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
-                    if icell != N-1:    
-                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[icell+1,0])
-                    else:
-                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[0,0])
+                    sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[np.mod(icell+1,N),0])
 
                     
                     dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
@@ -215,19 +219,16 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
 
                     flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
 
-                    if(c>0):
-                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-                    elif(c<0):
-                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                    #if(c>0):
+                    #    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                    #elif(c<0):
+                    #    flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
 
                     # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
                     flux_it_p2[icell,1:-1] = flux_it_p2[icell,1:-1] - D*0.5*dsol_it_cont[icell,1:-1]
 
-                    flux_it_p2[icell,0] = flux_it_p2[icell,0] + tau*(sol_it[icell-1,-1]-sol_it[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0])
-                    if icell != N-1:    
-                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[icell+1,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[icell+1,0])
-                    else:
-                        flux_it_p2[icell,-1] = flux_it_p2[icell,-1] + tau*(sol_it[icell,-1]-sol_it[0,0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[0,0])
+                    flux_it_p2[icell,0] =  tau*(sol_it[icell-1,-1]-sol_it[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2[icell,0]+flux_it_p2[icell-1,-1])
+                    flux_it_p2[icell,-1] = tau*(sol_it[icell,-1]-sol_it[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2[icell,-1]+flux_it_p2[np.mod(icell+1,N),0])
                     
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
@@ -248,7 +249,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                 #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
 
                 # Solution derivative
-                i
+                
 
                 # Undersampling of the auxiliary variable (RP)
                 #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
@@ -261,7 +262,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
 
                 #print flux_it_p2[icell,:]
                 # Flux Derivative
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i             # Undersampling : derivees non nulles pour les constantes !!!!! (AS & GR)
+                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
                 
                
             sol = sol0 - dti * alpha[ik]*dflux_it_cont

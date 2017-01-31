@@ -13,13 +13,13 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       =  3
+p       =  5
 
 # Stability criterion : CFL 
-CFL=       0.01                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL=       0.1                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
-Tfin   = 0.05
+Tfin   = 0.005
 
 
 # Velocity c (m/s) and diffusion D (m^2/s)
@@ -49,7 +49,7 @@ yR=0
 #Cell spacing :
 # cellmask = 'Regular' -> evenly spaced cells
 # cellmask = 'Irregular' -> unevenly customisable cell spacing
-cellmask = 'Irregular'
+cellmask = 'Regular'
 
 ### Computing solution
 x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask)
@@ -77,6 +77,9 @@ for i in range(len(x)):
             yth[i]=(1-m.erf((x[i]-c*(Tfin+grad_init))))/2
         else:
             yth[i]=(1-m.erf((x[i]-c*(Tfin+grad_init))/(2*m.sqrt(D*(Tfin+grad_init)))))/2
+    elif init=='Sine':
+            yth[i]=m.cos(5*2*np.pi*(x[i]-c*Tfin)) 
+
 
 file.close()
 
