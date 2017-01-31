@@ -221,22 +221,24 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                     dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
                     dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])                            # L'interpolation-extrapolation parait bizarre mais c'est ce qui est mis dans l'article je pense (GR)
 
-                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-
                     #if(c>0):
                     #    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
                     #elif(c<0):
                     #    flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
 
                     
-            flux_it_p2_tmp = np.copy(flux_it_p2)
+            flux_it_p2_conv = c*np.copy(sol_it_p2)
             for icell in range(0,N): #Interface loop
 
                 # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
-                flux_it_p2[icell,1:-1] = flux_it_p2_tmp[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
+                # Internal SP
+                flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
 
-                flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_tmp[icell,0]+flux_it_p2_tmp[icell-1,-1])
-                flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_tmp[icell,-1]+flux_it_p2_tmp[np.mod(icell+1,N),0])
+                #Left interface
+                flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
+                
+                #Right interface
+                flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
                 
                         #if(icell != 0):
                             #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
