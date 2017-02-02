@@ -13,13 +13,13 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       =  6
+p       = 6 
 
 # Stability criterion : CFL 
 CFL=       0.5                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
-Tfin   = 0.005
+Tfin   = 0.5
 
 
 # Velocity c (m/s) and diffusion D (m^2/s)
@@ -43,8 +43,8 @@ grad_init=10**(-12)
 #bcond*=1 for a periodic BC
 bcond = 1;
 # If Dirichlet conditions specify values
-yL=0
-yR=0
+yL=0.
+yR=0.
 
 #Cell spacing :
 # cellmask = 'Regular' -> evenly spaced cells
@@ -69,7 +69,10 @@ file = open("results_CFL="+str(CFL)+"_p="+str(p)+".txt", "w")
 yth=np.zeros(len(x))
 for i in range(len(x)):
     if init=='Gauss':
-        yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(x[i]-c*Tfin+0.1)**2/(4*D*Tfin+0.0001))
+        if bcond == 0:
+            yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(x[i]-c*Tfin+0.1)**2/(4*D*Tfin+0.0001))
+        else:
+            yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(np.mod(x[i]-c*Tfin+0.1+0.5,1)-0.5)**2/(4*D*Tfin+0.0001))
     elif init=='Constant':
         yth[i] = 10. 
     elif init=='RectErft':
@@ -78,7 +81,7 @@ for i in range(len(x)):
         else:
             yth[i]=(1-m.erf((x[i]-c*(Tfin+grad_init))/(2*m.sqrt(D*(Tfin+grad_init)))))/2
     elif init=='Sine':
-            yth[i]=m.cos(5*2*np.pi*(x[i]-c*Tfin)) 
+            yth[i]=m.cos(2*2*np.pi*(x[i]-c*Tfin)) 
 
 
 file.close()
