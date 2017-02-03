@@ -13,18 +13,26 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p       = 6 
+p = 6
+
+#Number of cells
+N = 100  
 
 # Stability criterion : CFL 
-CFL=       0.5                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL = 0.5                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
-Tfin   = 0.5
+Tfin = 0.05
 
+# Domain Length
+L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
-c      =  10.
-D      =  2.5e-3    
+c = 10.
+D = 0. #2.5e-3    
+
+ # Penalizing parameter
+tau = 0.
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -49,10 +57,10 @@ yR=0.
 #Cell spacing :
 # cellmask = 'Regular' -> evenly spaced cells
 # cellmask = 'Irregular' -> unevenly customisable cell spacing
-cellmask = 'Regular'
+cellmask = 'Irregular'
 
 ### Computing solution
-x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask)
+x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,tau)
 
 
 
@@ -72,7 +80,7 @@ for i in range(len(x)):
         if bcond == 0:
             yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(x[i]-c*Tfin+0.1)**2/(4*D*Tfin+0.0001))
         else:
-            yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(np.mod(x[i]-c*Tfin+0.1+0.5,1)-0.5)**2/(4*D*Tfin+0.0001))
+            yth[i]=1/m.sqrt((4*D*Tfin/0.0001)+1)*m.exp(-(np.mod(x[i]-c*Tfin+0.1+L/2,L)-L/2)**2/(4*D*Tfin+0.0001))
     elif init=='Constant':
         yth[i] = 10. 
     elif init=='RectErft':

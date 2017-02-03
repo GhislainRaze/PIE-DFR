@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,tau):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -29,22 +29,12 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
 
  # Space domain
     
-    #Number of cells
-    N=100   
-
-    
-    # Domain Length
-    L = 1.0
-
     # DOF
     Npoints=(p+1)*N
 
     #Space step
 
     dx = cellspacing(cellmask,L,N)
-    
-    # Penalizing parameter
-    tau = 0.
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
@@ -192,7 +182,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
             for icell in range(1,N-1): #Cell loop
 
                 
-
                 if(D==0.):
                     #
                     # Convective flux
@@ -218,6 +207,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                     # Convective flux
                     #
                     flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
+
 
             
             # Boundary flux
@@ -255,12 +245,29 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                 # Internal SP
                 flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
 
-                # Left interface
-                flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
+                # Interface flux
+                if(D==0.):
+                    #
+                    # Convective flux
+                    #
+
+                    #Left interface
+                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) + flux_it_p2_conv[icell,0]
+                    
+                    #Right interface
+                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) + flux_it_p2_conv[icell,-1]
+                else:
+                    #
+                    # Diffusive flux
+                    #
+
+                    #Left interface
+                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
+                    
+                    #Right interface
+                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
                 
-                # Right interface
-                flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
-                
+
             for icell in range(0,N):
                 # Flux derivative : undersampling
                 J_i = dx[icell]*0.5
@@ -355,6 +362,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                         #else:
                             #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
 
+                # Flux Derivative : undersampling
+                J_i = dx[icell]*0.5
+                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i 
                 
 
                 # Lagrangian interpolation of the complete solution (RP)             
@@ -379,9 +389,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask):
                 #print flux_it_p2[icell,:]
         
 
-                # Flux Derivative : undersampling
-                J_i = dx[icell]*0.5
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i    
+                   
                
         
         # Solution update
