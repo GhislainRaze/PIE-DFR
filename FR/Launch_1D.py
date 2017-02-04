@@ -31,8 +31,12 @@ L = 1.0
 c = 10.
 D = 0. #2.5e-3    
 
- # Penalizing parameter
-tau = 0.
+ # Correction function
+ # corFun = 0 : g2 correction function
+ # corFun = 1 : gr and gl correction functions
+ # ...
+
+corFun = 0.
 
 #Initialization 
 # init='Gauss' --> Gaussian law 
@@ -60,7 +64,7 @@ yR=0.
 cellmask = 'Irregular'
 
 ### Computing solution
-x0, sol0, x, sol, niter = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,tau)
+x0, sol0, x, sol, niter = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,corFun)
 
 
 

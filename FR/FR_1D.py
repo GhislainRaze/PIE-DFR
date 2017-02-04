@@ -16,7 +16,7 @@ from polynomials import *
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,tau):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
