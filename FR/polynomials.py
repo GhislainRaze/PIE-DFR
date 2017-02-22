@@ -34,7 +34,7 @@ def legendreCoef(order):
     elif order == 0:
         return 1.
     elif order == 1:
-        return np.array([1,0],[0,1])
+        return np.array([[1,0],[0,1]])
     else:
         # Construction from recurrence relation        
         leg = np.zeros([order+1,order+1])
@@ -110,7 +110,6 @@ def radauDerivatives(x,order,startOrder = 0):
     for i in range(1,order+1):
         for j in range(startOrder,order+1):
             y[j-startOrder] = y[j-startOrder] + i*rad[j,i]*x**(i-1)
-
     return y
 
 
@@ -181,26 +180,27 @@ def g2(x,p):
     rad = radau(x,p,p-1)
     y = (p-1)/(2*p-1.0) *rad[1] + p/(2*p-1.0)*rad[0]
     return y
-    
+
 
 # Returns the derivatives of g2 function evaluated at x
 def g2Derivative(x,p):
-    rad = radauDerivatives(x,p,p-1)
-    y = (p-1)/(2*p-1.0) *rad[1] + p/(2*p-1.0)*rad[0]
+    drad = radauDerivatives(x,p,p-1)
+    y = (p-1)/(2*p-1.0) *drad[1] + p/(2*p-1.0)*drad[0]
     return y
     
 
 
 # Returns the gl and gr functions evaluated at x
 def glgr(x,p):
+    p = p-1
     leg = legendre(x,p,p)
     gl = 0.5*(-1)**p * (1-x) * leg[0]
     gr = 0.5 * (1+x) * leg[0]
     return gl, gr
   
-  
 # Returns the derivatives of the gl and gr functions evaluated at x
 def glgrDerivatives(x,p):
+    p = p-1
     leg = legendre(x,p,p)
     dleg = legendreDerivatives(x,p,p)
     gl = 0.5*(-1)**p * ( (1-x) *dleg[0] - leg[0] )
@@ -216,18 +216,78 @@ def glgrDerivatives(x,p):
 
 
 # To check the correction functions
+"""
+p = 3
+x = np.linspace(-1,1,100)
+dx = x[1]-x[0]
 
-#p = 4
-#x = np.linspace(-1,1,100)
-#y = g2(x,p)
-
-#plt.figure
-#plt.plot(x,y)
-#plt.show()
+gl, gr = glgr(x,p)
 
 
-#gl,gr = glgr(x,p)
-#plt.figure
-#plt.plot(x,gl)
-#plt.plot(x,gr)
-#plt.show()
+plt.figure()
+plt.plot(x,gl)
+plt.plot(x,gr)
+
+dglNum = np.zeros(len(x))
+
+for i in range(1,len(x)-1):
+    dglNum[i] = 0.5*(gl[i+1]-gl[i-1])/dx
+
+dglNum[0] = (gl[1]-gl[0])/dx
+dglNum[-1] = (gl[-1]-gl[-2])/dx
+
+dgrNum = np.zeros(len(x))
+
+for i in range(1,len(x)-1):
+    dgrNum[i] = 0.5*(gr[i+1]-gr[i-1])/dx
+
+dgrNum[0] = (gr[1]-gr[0])/dx
+dgrNum[-1] = (gr[-1]-gr[-2])/dx
+
+dgl,dgr = glgrDerivatives(x,p)
+plt.figure()
+plt.plot(x,dgl)
+plt.plot(x,dglNum,'r--')
+
+
+plt.figure()
+plt.plot(x,dgr)
+plt.plot(x,dgrNum,'r--')
+
+
+gl = g2(x,p)
+gr = np.flipud(gl)
+dgl = g2Derivative(x,p)
+dgr = -np.flipud(dgl)
+
+
+plt.figure()
+plt.plot(x,gl)
+plt.plot(x,gr)
+
+dglNum = np.zeros(len(x))
+
+for i in range(1,len(x)-1):
+    dglNum[i] = 0.5*(gl[i+1]-gl[i-1])/dx
+
+dglNum[0] = (gl[1]-gl[0])/dx
+dglNum[-1] = (gl[-1]-gl[-2])/dx
+
+dgrNum = np.zeros(len(x))
+
+for i in range(1,len(x)-1):
+    dgrNum[i] = 0.5*(gr[i+1]-gr[i-1])/dx
+
+dgrNum[0] = (gr[1]-gr[0])/dx
+dgrNum[-1] = (gr[-1]-gr[-2])/dx
+
+plt.figure()
+plt.plot(x,dgl)
+plt.plot(x,dglNum,'r--')
+
+
+plt.figure()
+plt.plot(x,dgr)
+plt.plot(x,dgrNum,'r--')
+plt.show()
+"""

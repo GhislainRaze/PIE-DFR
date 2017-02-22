@@ -13,13 +13,13 @@ import DFR_1D
 ### Parameters
 
 # SD order
-p = 6
+p = 5
 
 #Number of cells
 N = 100  
 
 # Stability criterion : CFL 
-CFL = 0.5                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL = 0.8                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
 
 #Final time
 Tfin = 0.05
@@ -29,7 +29,7 @@ L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c = 10.
-D = 0. #2.5e-3    
+D = 0 #2.5e-3    
 
  # Penalizing parameter
 tau = 0.

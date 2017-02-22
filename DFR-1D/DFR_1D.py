@@ -159,241 +159,241 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,tau):
             #print "sol_it_p2",sol_it_p2[:,:]
 
 
-        if(bcond==0):
+            if(bcond==0):
 
-            ########################################################
-            #                                                      #
-            #                  Dirichlet BC                        #
-            #                                                      #
-            ########################################################
-
-
-            # First cell
-            sol_it_p2[0,0] = Yl
-            flux_it_p2[0,:] = c*sol_it_p2[0,:]
+                ########################################################
+                #                                                      #
+                #                  Dirichlet BC                        #
+                #                                                      #
+                ########################################################
 
 
-            # Last cell
-            sol_it_p2[-1,-1] = Yr
-            flux_it_p2[N-1,:] = c*sol_it_p2[N-1,:]
+                # First cell
+                sol_it_p2[0,0] = Yl
+                flux_it_p2[0,:] = c*sol_it_p2[0,:]
 
 
-            # Internal cells
-            for icell in range(1,N-1): #Cell loop
+                # Last cell
+                sol_it_p2[-1,-1] = Yr
+                flux_it_p2[N-1,:] = c*sol_it_p2[N-1,:]
+
+
+                # Internal cells
+                for icell in range(1,N-1): #Cell loop
+
+                    
+                    if(D==0.):
+                        #
+                        # Convective flux
+                        #
+                        flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
+                        if(c>0):
+                            flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                        elif(c<0):
+                            flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+                    else:
+                        #
+                        # Diffusive flux
+                        #
+                        sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
+                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[np.mod(icell+1,N),0])
+
+                        J_i = dx[icell]*0.5
+                        dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
+                        dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])
+
+
+                        #
+                        # Convective flux
+                        #
+                        flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
+
 
                 
+                # Boundary flux
                 if(D==0.):
                     #
                     # Convective flux
                     #
-                    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-                    if(c>0):
-                        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-                    elif(c<0):
-                        flux_it_p2[icell,-1] = c*sol_it_p2[icell+1,0]
+
+                    # Left boundary
+                    flux_it_p2[0,0:-1] = flux_it_p2_conv[0,0:-1]
+                    flux_it_p2[0,-1] = tau*(sol_it_p2[0,-1]-sol_it_p2[1,0]) + flux_it_p2_conv[0,-1]
+
+                    # Right boundary
+                    flux_it_p2[-1,1:] = flux_it_p2_conv[-1,1:]
+                    flux_it_p2[-1,0] = tau*(sol_it_p2[-2,-1]-sol_it_p2[-1,0]) + flux_it_p2_conv[-1,0]
                 else:
                     #
-                    # Diffusive flux
+                    # Convective and diffusive flux
                     #
-                    sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
-                    sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[np.mod(icell+1,N),0])
 
+                    # Left boundary
+                    flux_it_p2[0,0:-1] = flux_it_p2_conv[0,0:-1] - D*dsol_it_cont[0,0:-1]
+                    flux_it_p2[0,-1] = tau*(sol_it_p2[0,-1]-sol_it_p2[1,0]) - D*0.5*(dsol_it_cont[0,-1]+dsol_it_cont[1,0]) + 0.5*(flux_it_p2_conv[0,-1]+flux_it_p2_conv[1,0])
+
+                    # Right boundary
+                    flux_it_p2[-1,1:] = flux_it_p2_conv[-1,1:] - D*dsol_it_cont[-1,1:]
+                    flux_it_p2[-1,0] = tau*(sol_it_p2[-2,-1]-sol_it_p2[-1,0]) - D*0.5*(dsol_it_cont[-2,-1]+dsol_it_cont[-1,0]) + 0.5*(flux_it_p2_conv[-2,-1]+flux_it_p2_conv[-1,0])
+
+
+                # Interface flux
+                for icell in range(1,N-1):
+
+                    # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
+                    
+                    # Internal SP
+                    flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
+
+                    # Interface flux
+                    if(D==0.):
+                        #
+                        # Convective flux
+                        #
+
+                        #Left interface
+                        flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) + flux_it_p2_conv[icell,0]
+                        
+                        #Right interface
+                        flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) + flux_it_p2_conv[icell,-1]
+                    else:
+                        #
+                        # Diffusive flux
+                        #
+
+                        #Left interface
+                        flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
+                        
+                        #Right interface
+                        flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
+                    
+
+                for icell in range(0,N):
+                    # Flux derivative : undersampling
                     J_i = dx[icell]*0.5
-                    dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
-                    dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])
+                    dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
 
 
-                    #
-                    # Convective flux
-                    #
-                    flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
 
-
-            
-            # Boundary flux
-            if(D==0.):
-                #
-                # Convective flux
-                #
-
-                # Left boundary
-                flux_it_p2[0,0:-1] = flux_it_p2_conv[0,0:-1]
-                flux_it_p2[0,-1] = tau*(sol_it_p2[0,-1]-sol_it_p2[1,0]) + flux_it_p2_conv[0,-1]
-
-                # Right boundary
-                flux_it_p2[-1,1:] = flux_it_p2_conv[-1,1:]
-                flux_it_p2[-1,0] = tau*(sol_it_p2[-2,-1]-sol_it_p2[-1,0]) + flux_it_p2_conv[-1,0]
             else:
-                #
-                # Convective and diffusive flux
-                #
-
-                # Left boundary
-                flux_it_p2[0,0:-1] = flux_it_p2_conv[0,0:-1] - D*dsol_it_cont[0,0:-1]
-                flux_it_p2[0,-1] = tau*(sol_it_p2[0,-1]-sol_it_p2[1,0]) - D*0.5*(dsol_it_cont[0,-1]+dsol_it_cont[1,0]) + 0.5*(flux_it_p2_conv[0,-1]+flux_it_p2_conv[1,0])
-
-                # Right boundary
-                flux_it_p2[-1,1:] = flux_it_p2_conv[-1,1:] - D*dsol_it_cont[-1,1:]
-                flux_it_p2[-1,0] = tau*(sol_it_p2[-2,-1]-sol_it_p2[-1,0]) - D*0.5*(dsol_it_cont[-2,-1]+dsol_it_cont[-1,0]) + 0.5*(flux_it_p2_conv[-2,-1]+flux_it_p2_conv[-1,0])
-
-
-            # Interface flux
-            for icell in range(1,N-1):
-
-                # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
                 
-                # Internal SP
-                flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
-
-                # Interface flux
-                if(D==0.):
-                    #
-                    # Convective flux
-                    #
-
-                    #Left interface
-                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) + flux_it_p2_conv[icell,0]
-                    
-                    #Right interface
-                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) + flux_it_p2_conv[icell,-1]
-                else:
-                    #
-                    # Diffusive flux
-                    #
-
-                    #Left interface
-                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
-                    
-                    #Right interface
-                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
+                ########################################################
+                #                                                      #
+                #                   Periodic BC                        #
+                #                                                      #
+                ########################################################
                 
-
-            for icell in range(0,N):
-                # Flux derivative : undersampling
-                J_i = dx[icell]*0.5
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i
+                # Cell loop
+                for icell in range(0,N):
 
 
+                    if(D==0.):
+                        #
+                        # Convective flux
+                        #
+                        flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
 
-        else:
-            
-            ########################################################
-            #                                                      #
-            #                   Periodic BC                        #
-            #                                                      #
-            ########################################################
-            
-            # Cell loop
-            for icell in range(0,N):
+                        if(c>0):
+                            flux_it_p2_conv[icell,0] = c*sol_it_p2[icell-1,-1]
+                        elif(c<0):
+                            flux_it_p2_conv[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
+                     
+                    else:
+                        #
+                        # Diffusive flux
+                        #
+                        sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
+                        sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[np.mod(icell+1,N),0])
+
+                        J_i = dx[icell]*0.5
+                        dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
+                        dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])                            # L'interpolation-extrapolation parait bizarre mais c'est ce qui est mis dans l'article je pense (GR)
 
 
-                if(D==0.):
-                    #
-                    # Convective flux
-                    #
-                    flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
+                        #
+                        # Convective flux
+                        #
+                        flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
 
-                    if(c>0):
-                        flux_it_p2_conv[icell,0] = c*sol_it_p2[icell-1,-1]
-                    elif(c<0):
-                        flux_it_p2_conv[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
-                 
-                else:
-                    #
-                    # Diffusive flux
-                    #
-                    sol_it_cont[icell,0] = 0.5*(sol_it_p2[icell-1,-1]+sol_it_p2[icell,0])
-                    sol_it_cont[icell,-1] = 0.5*(sol_it_p2[icell,-1]+sol_it_p2[np.mod(icell+1,N),0])
+                        #if(c>0):
+                        #    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
+                        #elif(c<0):
+                        #    flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
 
+                        
+                
+                
+                # Interface loop
+                for icell in range(0,N):
+
+                    # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
+                    
+                    # Internal SP
+                    flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
+
+                    # Interface flux
+                    if(D==0.):
+                        #
+                        # Convective flux
+                        #
+
+                        #Left interface
+                        flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) + flux_it_p2_conv[icell,0]
+                        
+                        #Right interface
+                        flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) + flux_it_p2_conv[icell,-1]
+                    else:
+                        #
+                        # Diffusive flux
+                        #
+
+                        #Left interface
+                        flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
+                        
+                        #Right interface
+                        flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
+                    
+                            #if(icell != 0):
+                                #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
+                            #else:
+                                #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
+                            #if(icell != N-1):
+                                #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
+                            #else:
+                                #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
+
+                    # Flux Derivative : undersampling
                     J_i = dx[icell]*0.5
-                    dsol_it_int[icell,:] = np.dot(Deriv2,sol_it_cont[icell,:])/J_i  
-                    dsol_it_cont[icell,:] = np.dot(Extrap2,dsol_it_int[icell,:])                            # L'interpolation-extrapolation parait bizarre mais c'est ce qui est mis dans l'article je pense (GR)
-
-
-                    #
-                    # Convective flux
-                    #
-                    flux_it_p2_conv[icell,:] = c*sol_it_p2[icell,:]
-
-                    #if(c>0):
-                    #    flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-                    #elif(c<0):
-                    #    flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,N),0]
-
+                    dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i 
                     
+
+                    # Lagrangian interpolation of the complete solution (RP)             
+                    #sol_it_cont[icell,:] = sol_it_p2[icell,:]
+                    #sol_it_cont[icell,0] = sol_common_left
+                    #sol_it_cont[icell,-1] = sol_common_right
+
+                    #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
+
+                    # Solution derivative
+                    
+
+                    # Undersampling of the auxiliary variable (RP)
+                    #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
+                    #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
+
+                    # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
+
+                    # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
+                    #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
+
+                    #print flux_it_p2[icell,:]
             
-            
-            # Interface loop
-            for icell in range(0,N):
 
-                # A verifier : signe de la penalisation, signe de la diffusion, schema utilise pour la diffusion.
-                
-                # Internal SP
-                flux_it_p2[icell,1:-1] = flux_it_p2_conv[icell,1:-1] - D*dsol_it_cont[icell,1:-1]
-
-                # Interface flux
-                if(D==0.):
-                    #
-                    # Convective flux
-                    #
-
-                    #Left interface
-                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) + flux_it_p2_conv[icell,0]
-                    
-                    #Right interface
-                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) + flux_it_p2_conv[icell,-1]
-                else:
-                    #
-                    # Diffusive flux
-                    #
-
-                    #Left interface
-                    flux_it_p2[icell,0] =  tau*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0]) - D*0.5*(dsol_it_cont[icell-1,-1]+dsol_it_cont[icell,0]) + 0.5*(flux_it_p2_conv[icell,0]+flux_it_p2_conv[icell-1,-1])
-                    
-                    #Right interface
-                    flux_it_p2[icell,-1] = tau*(sol_it_p2[icell,-1]-sol_it_p2[np.mod(icell+1,N),0]) - D*0.5*(dsol_it_cont[icell,-1]+dsol_it_cont[np.mod(icell+1,N),0]) + 0.5*(flux_it_p2_conv[icell,-1]+flux_it_p2_conv[np.mod(icell+1,N),0])
-                
-                        #if(icell != 0):
-                            #sol_common_left = 0.5*((sign(c)+1)*sol_it_p2[icell-1,-1] + (sign(c)-1)*sol_it_p2[icell,0])
-                        #else:
-                            #sol_common_left = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yl
-                        #if(icell != N-1):
-                            #sol_common_right = 0.5*((sign(c)+1)*sol_it_p2[icell,-1] + (sign(c)-1)*sol_it_p2[icell+1,0])
-                        #else:
-                            #sol_common_right = bcond*0.5*((sign(c)-1)*sol_it_p2[0,0] + (sign(c)+1)*sol_it_p2[-1,-1]) + Yr
-
-                # Flux Derivative : undersampling
-                J_i = dx[icell]*0.5
-                dflux_it_cont[icell,:] = np.dot(Deriv2,flux_it_p2[icell,:])/J_i 
-                
-
-                # Lagrangian interpolation of the complete solution (RP)             
-                #sol_it_cont[icell,:] = sol_it_p2[icell,:]
-                #sol_it_cont[icell,0] = sol_common_left
-                #sol_it_cont[icell,-1] = sol_common_right
-
-                #display(fluxPointMesh.reshape((p+3)*N),sol_it_p2.reshape((p+3)*N),p,dx[0],N)
-
-                # Solution derivative
-                
-
-                # Undersampling of the auxiliary variable (RP)
-                #dsol_it_int[icell,:] = np.dot(Extrap2,dsol_it_cont[icell,1:-2]) Futile matrice identité!
-                #dsol_it_int[icell,:] = dsol_it_cont[icell,1:-2]
-
-                # Flux Computation : f(x) = c*u(x) - D*q(x) (RP) -> TODO : A function computing the flux for more complex problem
-
-                # Flux Extrapolation on Interfaces (RP) -> Attention, ce n'est pas ce qui est décrit dans l'article ! (AS)
-                #flux_it_p2[icell,:] = np.dot(Extrap2,flux_it_int[icell,:]) #Ligne inutile dans ce cas, mais utile si on a un pblm non linéaire
-
-                #print flux_it_p2[icell,:]
-        
-
+                       
                    
-               
-        
-        # Solution update
-        sol = sol0 - dti * alpha[ik]*dflux_it_cont
+            
+            # Solution update
+            sol = sol0 - dti * alpha[ik]*dflux_it_cont
         
         if itime==niter:
             dt1=dt

@@ -12,38 +12,37 @@ import FR_1D
 
 ### Parameters
 
-# SD order
-p = 6
+# FR order
+p = 3
 
 #Number of cells
-N = 100  
+N = 40
 
 # Stability criterion : CFL 
-CFL = 0.5                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL = 0.8
 
 #Final time
-Tfin = 0.05
+Tfin = 0.5
 
 # Domain Length
 L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c = 10.
-D = 0. #2.5e-3    
+D = 2.5e-3
 
  # Correction function
  # corFun = 0 : g2 correction function
  # corFun = 1 : gr and gl correction functions
  # ...
-
-corFun = 0.
+corFun = 1.
 
 #Initialization 
-# init='Gauss' --> Gaussian law 
-#init='Constant' --> Constant law 
+# init = 'Gauss'    --> Gaussian law 
+# init = 'Constant' --> Constant law 
 # init = 'Triangle' --> Linear Tipi law
-#init='RectErf'--> Rectangular step with erf function
-
+# init = 'RectErf'  --> Rectangular step with erf function
+# init = 'Sine'     --> Sine
 init='Gauss'
 
 
@@ -53,15 +52,17 @@ grad_init=10**(-12)
 #boundary conditions on the left side bcondL and the right side bcondR
 #bcond*=0 for a Dirichlet BC
 #bcond*=1 for a periodic BC
-bcond = 1;
+bcond = 1
+
+
 # If Dirichlet conditions specify values
 yL=0.
 yR=0.
 
 #Cell spacing :
-# cellmask = 'Regular' -> evenly spaced cells
-# cellmask = 'Irregular' -> unevenly customisable cell spacing
-cellmask = 'Irregular'
+# cellmask = 'Regular'  --> evenly spaced cells
+# cellmask = 'Irregular'--> unevenly customisable cell spacing
+cellmask = 'Regular'
 
 ### Computing solution
 x0, sol0, x, sol, niter = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,corFun)
@@ -97,14 +98,6 @@ for i in range(len(x)):
 
 
 file.close()
-
-#print 'Solution initiale'
-#print sol0
-#print 'Solution calculee'
-#print sol
-
-#for i in range(len(x)):
-#    print sol0[i]
 
 ### Solution plotting
 plt.plot(x0,sol0,'k-')

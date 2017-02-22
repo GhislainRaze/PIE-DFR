@@ -297,7 +297,7 @@ flux_it_p2 = np.zeros([Ncells,p+3])
 g2dl = g2Derivative(xi,p)
 g2dr = np.flipud(g2Derivative(xi,p))
 g2dl2 = g2Derivative(xi2,p)
-g2dr2 = np.flipud(g2Derivative(xi2,p))
+g2dr2 = -np.flipud(g2Derivative(xi2,p))
 Deriv = DGen(p)
 Deriv2 = D2Gen3(p)
 
@@ -339,3 +339,4 @@ plt.plot(pointsUSDeriv,derivUS,'-b')
 plt.legend(('Derivative of the continuous flux','Derivative of degree p+1','True derivative'), loc='best')
 plt.title("Derivatives - FR")
 
+plt.show()
