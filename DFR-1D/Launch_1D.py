@@ -12,10 +12,10 @@ import DFR_1D
 
 ### Parameters
 
-# SD order
+# DFR order
 p = 5
 
-#Number of cells
+# Number of cells
 N = 100  
 
 # Stability criterion : CFL 
@@ -49,18 +49,24 @@ grad_init=10**(-12)
 #boundary conditions on the left side bcondL and the right side bcondR
 #bcond*=0 for a Dirichlet BC
 #bcond*=1 for a periodic BC
-bcond = 1;
+bcond = 1
 # If Dirichlet conditions specify values
 yL=0.
 yR=0.
 
+
+# Time integration scheme
+# timeIntegration='RK4'     --> Fourth order Runge-Kutta scheme
+# timeIntegration='RK6low'  --> Low storage sixth order Runge-Kutta scheme 
+timeIntegration='RK6low'
+
 #Cell spacing :
 # cellmask = 'Regular' -> evenly spaced cells
 # cellmask = 'Irregular' -> unevenly customisable cell spacing
-cellmask = 'Irregular'
+cellmask = 'Regular'
 
 ### Computing solution
-x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,tau)
+x0, sol0, x, sol, niter = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
 
 
 

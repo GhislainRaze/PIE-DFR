@@ -16,7 +16,7 @@ from polynomials import *
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration="RK6low",cellmask="Regular"):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -26,7 +26,11 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
     #coeffRK=RKgamma(6)
     #alpha=RKgamma2alpha(coeffRK)
    # Space discretisation for RK6 optimized with p
-    alpha=RKalpha6optim(p)
+    if(timeIntegration=='RK6low'):
+        alpha=RKalpha6optim(p)
+    elif(timeIntegration=='RK4'):
+        alpha,beta = RK4()
+
 
  # Space domain
     
@@ -134,7 +138,8 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
     elif corFun == 1.:
         dgl, dgr = glgrDerivatives(solPoint,p+1)    # Left and right correction function derivative on the solution points 
 
-    
+    if(timeIntegration=="RK4"):
+        kFlux = np.zeros([4,N,p+1])                  # Stored flux at different stages
 
 
     ########################################################
@@ -175,11 +180,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
                         delta_flux_r[0] = c*(sol_it_ex[1,0]-sol_it_ex[0,-1])
                         delta_flux_r[-1] = c*(Yr-sol_it_ex[-1,-1])
                 else:
-                    delta_flux_l[0] = c*(Yl-sol_it_ex[0,0])
+                    if(c>0.):
+                        delta_flux_l[0] = c*(Yl-sol_it_ex[0,0])
                     delta_flux_r[0] = 0.5*( c*(sol_it_ex[1,0]-sol_it_ex[0,-1]) - D*(dsol_it_ex[1,0]-dsol_it_ex[0,-1]) )
 
                     delta_flux_l[-1] = 0.5*( c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0]) - D*(dsol_it_ex[-2,-1]-dsol_it_ex[-1,0]) )
-                    delta_flux_r[-1] = c*(Yr-sol_it_ex[-1,-1])
+                    if(c<0.):
+                        delta_flux_r[-1] = c*(Yr-sol_it_ex[-1,-1])
 
             elif(bcond==1):     # Periodic BC
                 if(D==0.):
@@ -217,6 +224,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,cellmask,N,L,corFun):
 
             # Solution update
             sol = sol0 - dti * alpha[ik]*dflux_it_cont
+            if(timeIntegration=="RK4"):
+                kFlux[ik,:,:] = dflux_it_cont
+
+        if(timeIntegration=="RK4"):
+            sol = sol0
+            for ik in range(len(beta)):
+                sol = sol - dti*beta[ik]*kFlux[ik,:,:]
 
         if itime==niter:
             dt1=dt
@@ -441,6 +455,64 @@ def RKgamma2alpha(gamma):
         prod = prod*alpha[-i-1]
     return alpha
 
+
+def RKgamma(order):
+    ''' Runge-Kutta coefficients for time integration '''
+    gamma = np.zeros(order)
+    for i in range(order):
+        gamma[i] = 1. / np.math.factorial(i + 1)
+    return gamma
+
+def RKalpha6optim(p):
+    ''' Runge-Kutta coefficients for time integration optimized for order 6'''
+    alpha = np.zeros(6)
+    alpha[2]=0.24662360430959
+    alpha[3]=0.33183954253762
+    alpha[4]=0.5
+    alpha[5]=1.0
+    if (p==2):
+            alpha[0]=0.05114987425612
+            alpha[1]=0.13834878188543
+    if (p==3):
+            alpha[0]=0.07868681448952
+            alpha[1]=0.12948018884941
+    if (p==4):
+            alpha[0]=0.06377275785911
+            alpha[1]=0.15384606858263
+    if (p==5):
+            alpha[0]=0.06964990321063
+            alpha[1]=0.13259436863348
+    if (p==6):
+            alpha[0]=0.06809977676724
+            alpha[1]=0.15779153065865
+    if (p==7):
+            alpha[0]=0.06961281995158
+            alpha[1]=0.14018408222804
+    if (p==8):
+            alpha[0]=0.07150767268798
+            alpha[1]=0.16219675431011
+    if (p==9):
+            alpha[0]= 0.06599710352324
+            alpha[1]=0.13834850670675
+    if (p==10):
+            alpha[0]=0.07268810031422
+            alpha[1]=0.16368178688643
+    return alpha
+
+def RK4():
+    alpha = np.zeros(4)
+    alpha[0] = 0.5 
+    alpha[1] = 0.5
+    alpha[2] = 1.
+
+    beta = np.zeros(4)
+    beta[0] = 1.0/6.0
+    beta[1] = 1.0/3.0
+    beta[2] = 1.0/3.0
+    beta[3] = 1.0/6.0
+
+    return alpha, beta
+
 ''' Part 6 Post Processing'''
 def InterpGen(p,h,xinterp,solPointMesh):
 
@@ -488,49 +560,6 @@ def display(x,y,p,dx,N):
     h=1000
     xx,yy=interpolation(x,y,p+2,h,dx,N)
     plt.plot(xx,yy, 'r-')
-
-def RKgamma(order):
-    ''' Runge-Kutta coefficients for time integration '''
-    gamma = np.zeros(order)
-    for i in range(order):
-        gamma[i] = 1. / np.math.factorial(i + 1)
-    return gamma
-
-def RKalpha6optim(p):
-    ''' Runge-Kutta coefficients for time integration optimized for order 6'''
-    alpha = np.zeros(6)
-    alpha[2]=0.24662360430959
-    alpha[3]=0.33183954253762
-    alpha[4]=0.5
-    alpha[5]=1.0
-    if (p==2):
-            alpha[0]=0.05114987425612
-            alpha[1]=0.13834878188543
-    if (p==3):
-            alpha[0]=0.07868681448952
-            alpha[1]=0.12948018884941
-    if (p==4):
-            alpha[0]=0.06377275785911
-            alpha[1]=0.15384606858263
-    if (p==5):
-            alpha[0]=0.06964990321063
-            alpha[1]=0.13259436863348
-    if (p==6):
-            alpha[0]=0.06809977676724
-            alpha[1]=0.15779153065865
-    if (p==7):
-            alpha[0]=0.06961281995158
-            alpha[1]=0.14018408222804
-    if (p==8):
-            alpha[0]=0.07150767268798
-            alpha[1]=0.16219675431011
-    if (p==9):
-            alpha[0]= 0.06599710352324
-            alpha[1]=0.13834850670675
-    if (p==10):
-            alpha[0]=0.07268810031422
-            alpha[1]=0.16368178688643
-    return alpha
 
 def cellspacing(maskoption,L,N):
     mask = np.ones(N)   #irregular cell size mask proportional to regular size

@@ -16,20 +16,20 @@ import FR_1D
 p = 3
 
 #Number of cells
-N = 40
+N = 100
 
 # Stability criterion : CFL 
 CFL = 0.8
 
 #Final time
-Tfin = 0.5
+Tfin = 0.05
 
 # Domain Length
 L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c = 10.
-D = 2.5e-3
+D = 0. #2.5e-3
 
  # Correction function
  # corFun = 0 : g2 correction function
@@ -56,8 +56,13 @@ bcond = 1
 
 
 # If Dirichlet conditions specify values
-yL=0.
+yL=1.
 yR=0.
+
+# Time integration scheme
+# timeIntegration='RK4'     --> Fourth order Runge-Kutta scheme
+# timeIntegration='RK6low'  --> Low storage sixth order Runge-Kutta scheme 
+timeIntegration='RK6low'
 
 #Cell spacing :
 # cellmask = 'Regular'  --> evenly spaced cells
@@ -65,7 +70,7 @@ yR=0.
 cellmask = 'Regular'
 
 ### Computing solution
-x0, sol0, x, sol, niter = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL*(1-bcond),yR*(1-bcond),cellmask,N,L,corFun)
+x0, sol0, x, sol, niter = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,corFun,timeIntegration,cellmask)
 
 
 
