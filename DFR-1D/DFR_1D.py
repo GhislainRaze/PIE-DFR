@@ -400,10 +400,10 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,tau,timeIntegration="RK6l
             
             # Solution update
             sol = sol0 - dti * alpha[ik]*dflux_it_cont
-            if(timeIntegration=="RK4"):
+            if(timeIntegration=="RK4"):         # Saving stages
                 kFlux[ik,:,:] = dflux_it_cont
 
-        if(timeIntegration=="RK4"):
+        if(timeIntegration=="RK4"):             # Combining stages
             sol = sol0
             for ik in range(len(beta)):
                 sol = sol - dti*beta[ik]*kFlux[ik,:,:]

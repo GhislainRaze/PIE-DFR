@@ -165,8 +165,10 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
             # Extrapolation of solution on interfaces
             for icell in range(0,N):        
                 sol_it_ex[icell,:] = np.dot(Extrap,sol_it[icell,:])
-                dsol_it[icell,:] = 2/dx[icell]*np.dot(Deriv,sol_it[icell,:])
-                dsol_it_ex[icell,:] = np.dot(Extrap,dsol_it[icell,:])
+                if(D!=0.):
+                    dsol_it[icell,:] = 2/dx[icell]*np.dot(Deriv,sol_it[icell,:])
+                    dsol_it_ex[icell,:] = np.dot(Extrap,dsol_it[icell,:])
+
                 flux_it[icell,:] = c*sol_it[icell,:] - D*dsol_it[icell,:]
 
 
@@ -203,6 +205,10 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
                     delta_flux_l[-1] = 0.5*( c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0]) - D*(dsol_it_ex[-2,-1]-dsol_it_ex[-1,0]) )
                     delta_flux_r[-1] = 0.5*( c*(sol_it_ex[0,0]-sol_it_ex[-1,-1]) - D*(dsol_it_ex[0,0]-dsol_it_ex[-1,-1]) )
 
+            # Continuous flux on solution points computation (boundary cells)
+            dflux_it_cont[0,:] = 2/dx[0]*(np.dot(Deriv,flux_it[0,:]) + delta_flux_l[0]*dgl + delta_flux_r[0]*dgr)
+            dflux_it_cont[-1,:] = 2/dx[-1]*(np.dot(Deriv,flux_it[-1,:]) + delta_flux_l[-1]*dgl + delta_flux_r[-1]*dgr)
+
 
             # Correction flux on interfaces computation (internal cells)
             for icell in range(1,N-1):
@@ -215,19 +221,18 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
                 else:
                     delta_flux_l[icell] = 0.5*( c*(sol_it_ex[icell-1,-1]-sol_it_ex[icell,0]) - D*(dsol_it_ex[icell-1,-1]-dsol_it_ex[icell,0]) )
                     delta_flux_r[icell] = 0.5*( c*(sol_it_ex[np.mod(icell+1,N),0]-sol_it_ex[icell,-1]) - D*(dsol_it_ex[np.mod(icell+1,N),0]-dsol_it_ex[icell,-1]) )
- 
-
-            # Continuous flux on solution points computation
-            for icell in range(N):
+                
+                # Continuous flux on solution points computation (internal cells)
                 dflux_it_cont[icell,:] = 2/dx[icell]*(np.dot(Deriv,flux_it[icell,:]) + delta_flux_l[icell]*dgl + delta_flux_r[icell]*dgr)
+
 
 
             # Solution update
             sol = sol0 - dti * alpha[ik]*dflux_it_cont
-            if(timeIntegration=="RK4"):
+            if(timeIntegration=="RK4"):         # Saving stages
                 kFlux[ik,:,:] = dflux_it_cont
 
-        if(timeIntegration=="RK4"):
+        if(timeIntegration=="RK4"):             # Combining stages
             sol = sol0
             for ik in range(len(beta)):
                 sol = sol - dti*beta[ik]*kFlux[ik,:,:]

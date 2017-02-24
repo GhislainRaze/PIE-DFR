@@ -13,7 +13,7 @@ import DFR_1D
 ### Parameters
 
 # DFR order
-p = 5
+p = 8
 
 # Number of cells
 N = 100  
