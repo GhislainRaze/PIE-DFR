@@ -11,7 +11,7 @@ from gauss import *
 ''' 23/03/15 '''
 ''' SD combu.py : Python library for Spectral Difference Method in combustion '''
 
-def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegration="RK6low",cellmask="Regular"):
+def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegration="RK6low",cellmask="Regular",ksin=np.pi/2):
     ''' Order of polynomial p '''
     ''' Runge-Kutta coeffcients alpha '''
     ''' Mesh composed of n isoparametric cells |-------| '''
@@ -37,7 +37,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
-    x[0]=-0.5*N*dx[0] 
+    x[0]=0.
     for i in range(N):
         x[i+1]=x[i]+dx[i]
     
@@ -86,7 +86,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
     for i in range(len(solPointMesh)):
         for j in range(len(solPointMesh[0])):
             if init==0:
-                sol[i,j]=m.exp(-20*(solPointMesh[i,j])**2)
+                sol[i,j]=0. #m.exp(-20*(solPointMesh[i,j])**2)
             elif init==1: 
                 if method==0:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2
@@ -139,6 +139,11 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 
 
         sol0 =np.copy(sol)
+        if itime == niter:
+            Yl = np.sin(ksin*(itime*dt+dtfin))
+        else:
+            Yl = np.sin(ksin*((itime + 1)*dt))
+
 #Range Kutta loop '''
         for ik in range(len(alpha)):
 #loop on number of cells'''
@@ -210,11 +215,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 
 # Derivation of grad
                     lapl[icell, :] = np.dot(Deriv, gradF[icell,:])
-            
-            # Correction: for periodic BCs (GR)
-            Dadv[0, :] = np.dot(Deriv, flux_it[0,:])
-            lapl[0, :] = np.dot(Deriv, gradF[0,:])   
-
+                
             sol = sol0 + dti *  alpha[ik]*(D*lapl-Dadv)
             if(timeIntegration=="RK4"):         # Saving stages
                 kFlux[ik,:,:] = Dadv-D*lapl
@@ -224,7 +225,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
             for ik in range(len(beta)):
                 sol = sol - dti*beta[ik]*kFlux[ik,:,:]
                 
-        l2[itime+1] = gaussIntegration(sol**2,intLagrange,wG,dx)
+        l2[itime+1] = gaussIntegration(sol[int(0.8*N):int(0.9*N)]-sol[0:int(0.1*N)],intLagrange,wG,dx)
         if itime==niter:
             dt1=dt
             print "Iteration:"+str(itime) +",Time: " + str(itime*dt1+dtfin) + "/" + str(niter*dt+dtfin)
@@ -440,7 +441,7 @@ def interpolation(solPointMesh, sol, p, h,dx,Ncell):
     sol = sol.reshape((int(len(sol)/(p+1)),int(p+1)))    
     xinterp = np.zeros((solPointMesh.shape[0], len(np.arange(0, dx+0.000000000001, dx/h))))
     for icell in range(len(solPointMesh)):
-        a=np.arange(dx*icell, dx*(icell+1)+0.00000000001, dx/h)-dx*Ncell/2
+        a=np.arange(dx*icell, dx*(icell+1)+0.00000000001, dx/h)
         xinterp[icell,:] = a
         
     
