@@ -190,7 +190,14 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
 
 # Derivation of grad
                     lapl[icell, :] = np.dot(Deriv, gradF[icell,:])
-                
+             
+
+            # Correction: for periodic BCs (GR)
+            Dadv[0, :] = np.dot(Deriv, flux_it[0,:])
+            lapl[0, :] = np.dot(Deriv, gradF[0,:])   
+            
+
+
             sol = sol0 + dti *  alpha[ik]*(D*lapl-Dadv)
         
                 
