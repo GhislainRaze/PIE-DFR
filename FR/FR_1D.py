@@ -56,7 +56,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
     solPointMesh = pointMeshGen(N,p, solPoint,dx,x)
     fluxPointMesh = pointMeshGen(N,p+2, fluxPoint,dx,x)
 
-    dxmin = min(dx)*min(min(np.abs(fluxPoint-np.roll(fluxPoint,1))),min(np.abs(fluxPoint-np.roll(fluxPoint,-1))))/2
+    dxmin = min(dx)/((p+1)**2)
 
 
     #Calcul dt 
@@ -68,10 +68,10 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
         dt = CFL*(dxmin)**2 /D
     elif D==0.: # Advection AS
         print "Pure Advection"
-        dt= CFL*dxmin/c
+        dt= CFL*dxmin/np.abs(c)
     else: # Advection + Diffusion AS
         print "Advection with Diffusion"
-        dtadv= CFL * dxmin / c
+        dtadv= CFL * dxmin / np.abs(c)
         dtdiff=CFL*dxmin**2 /D
         dt= min([dtadv,dtdiff])
     
@@ -94,13 +94,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
     sol =np.zeros([len(solPointMesh),len(solPointMesh[0])])
     for i in range(len(solPointMesh)):
         for j in range(len(solPointMesh[0])):
-            if init=='Gauss': # u0 = gaussienne 
+            if init=='Gauss':
                 sol[i,j]=m.exp(-(solPointMesh[i,j]+0.10)**2/0.0001)
-            elif init=='Constant': #u0 = cst
+            elif init=='Constant':
                 sol[i,j] = 10.0
-            elif init=='Triangle': #u0 = __/\__
+            elif init=='Triangle':
                 sol[i,j] = 0.0 #TODO
-            elif init==1: # u0 = fonction erreur
+            elif init==1:
                 if 0==0:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
                 else:
@@ -271,7 +271,7 @@ def solPointGen(p):
     ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
     solPoint = np.zeros(p+1)
     for i in range(len(solPoint)):
-        solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1))) # Peut-être qu'il faut faire solPoint[i+1], not sure --> Nope, c'est correct car en python on commence à 0
+        solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1)))
     return solPoint 
 
 def pointMeshGen(N,p, point,dx,xreal):
@@ -341,18 +341,14 @@ def lagrangeDerivative(x, i, xi):
         
     return der
 
-def ExtrapGen(p): # Fonction sans intérêt : on extrapole sur les points solutions -> matrice diagonale !
+def ExtrapGen(p):
     ''' Extrapolation through lagrange polynomials on p+1 points '''
     ns = p+1
-    solPoint = solPointGen(p) # A optimiser : on peut le generer 1! fois AS
+    solPoint = solPointGen(p) 
 
-    #RP nf = p+2
-    #RP fluxPoint = fluxPointGen(p)
-
-    Extrap=np.zeros([ns,ns]); #(RP) ns + 1 ? -> on extrapole seulement apd des p+1 pour l'instant... AS
+    Extrap=np.zeros([ns,ns])
     for i in range(ns):
         for j in range(ns):
-            #Extrap[i,j]=lagrange(fluxPoint[i],solPoint,j);
             Extrap[i,j]=lagrange(solPoint[i],solPoint,j) # row = lagrange polynomial value on solpoint i | column = lagrange polynomial non zero on j
     return Extrap
 
@@ -360,7 +356,6 @@ def Extrap2Gen(p):
     ''' Extrapolation matrix for the P+3 reconstruction with border terms ''' 
     solPoint = solPointGen(p) 
 
-    #Ajout des bords aux points solutions
     fluxPoint = np.insert(solPoint,0,-1) 
     fluxPoint = np.append(fluxPoint,1)
 

@@ -13,6 +13,7 @@ import FR_1D
 import DFR_1D
 import FD_1D
 import time
+import solutionPoints
 
 ### Parameters
 
@@ -20,13 +21,22 @@ import time
 fou = False
 
 # Number of cycles
-NCycles = 1000
+NCycles = 10
 
 # Spectral method order
 p = 4
 
 # Number of cells
 N = 5
+
+# Type of SP
+# SP = 1    --> Gauss-Lobatto
+# SP = 2    --> Gauss
+# SP = 3
+SPchoice = 1
+
+solutionPoints.writeSP(p,SPchoice)
+
 
 # Stability criterion : CFL 
 CFL = 0.8                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)

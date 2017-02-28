@@ -13,7 +13,7 @@ import FR_1D
 ### Parameters
 
 # FR order
-p = 3
+p = 5
 
 #Number of cells
 N = 100
@@ -22,14 +22,14 @@ N = 100
 CFL = 0.8
 
 #Final time
-Tfin = 0.05
+Tfin = 0.1
 
 # Domain Length
 L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c = 10.
-D = 0. #2.5e-3
+D = 2.5e-3
 
  # Correction function
  # corFun = 0 : g2 correction function
@@ -56,7 +56,7 @@ bcond = 1
 
 
 # If Dirichlet conditions specify values
-yL=1.
+yL=0.5
 yR=0.
 
 # Time integration scheme

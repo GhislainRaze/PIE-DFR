@@ -13,13 +13,13 @@ import DFR_1D
 ### Parameters
 
 # DFR order
-p = 8
+p = 5
 
 # Number of cells
 N = 100  
 
 # Stability criterion : CFL 
-CFL = 0.8                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
+CFL = 0.8
 
 #Final time
 Tfin = 0.05
@@ -29,7 +29,7 @@ L = 1.0
 
 # Velocity c (m/s) and diffusion D (m^2/s)
 c = 10.
-D = 0 #2.5e-3    
+D = 2.5e-3    
 
  # Penalizing parameter
 tau = 0.
@@ -49,9 +49,9 @@ grad_init=10**(-12)
 #boundary conditions on the left side bcondL and the right side bcondR
 #bcond*=0 for a Dirichlet BC
 #bcond*=1 for a periodic BC
-bcond = 1
+bcond = 1 
 # If Dirichlet conditions specify values
-yL=0.
+yL=0.1
 yR=0.
 
 
@@ -100,13 +100,6 @@ for i in range(len(x)):
 
 file.close()
 
-#print 'Solution initiale'
-#print sol0
-#print 'Solution calculee'
-#print sol
-
-#for i in range(len(x)):
-#    print sol0[i]
 
 ### Solution plotting
 plt.plot(x0,sol0,'k-')

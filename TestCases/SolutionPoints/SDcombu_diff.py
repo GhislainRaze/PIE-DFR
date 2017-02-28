@@ -262,11 +262,8 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 '''Part 1 Position of points and mesh of the domain'''
 
 def solPointGen(p):
-# Compute solution points for an isoparametric cell with Gauss points '''
-    solPoint = np.zeros(p+1)
-    for i in range(len(solPoint)):
-        solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1)))
-    return solPoint
+    return np.loadtxt("SP.txt")
+
 
 def pointMeshGen(N,p, point,dx,xreel):
     ''' Compute flux or solution points '''

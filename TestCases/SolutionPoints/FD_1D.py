@@ -9,16 +9,16 @@ import scipy.interpolate
 import scipy.integrate
 import math as m
 import matplotlib.pyplot as plt
-from polynomials import *
-from gauss import *
+from scipy.integrate import simps
+
 
 ''' authors: W. Hambli & L. Ma & R. Pile & G. Raze & A. Schmalzried'''
 ''' 22/02/2017 '''
-''' FR_1D.py : Python library for Flux Reconstruction Method '''
+''' FR_1D.py : Python library for Finite Difference Method '''
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration="RK6low",cellmask="Regular"):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,timeIntegration="RK6low",cellmask="Regular"):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -41,25 +41,18 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
 
     #Space step
 
-    dx = cellspacing(cellmask,L,N)
+    dx = cellspacing(cellmask,L,Npoints-1)
 
     # Cells centered about -L/2 to +L/2 AS
-    x=np.zeros(N+1)
-    x[0]=-0.5*N*dx[0] 
-    for i in range(N):
+    x=np.zeros(Npoints)
+    x[0]=-0.5*(Npoints-1)*dx[0] 
+    for i in range(Npoints-1):
         x[i+1]=x[i]+dx[i]
 
 
 # Mesh creation with gauss points on isoparametric cells
 
-    solPoint = solPointGen(p)
-    fluxPoint = np.insert(solPoint,0,-1)
-    fluxPoint = np.append(fluxPoint,1)
-    solPointMesh = pointMeshGen(N,p, solPoint,dx,x)
-    fluxPointMesh = pointMeshGen(N,p+2, fluxPoint,dx,x)
-
-    dxmin = min(dx)/((p+1)**2)
-
+    dxmin = L/N/((p+1)**2)       # Same timestep as spectral method (although not necessary)
 
     #Calcul dt 
     if(c==0. and D==0.) :
@@ -86,74 +79,29 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
     print 'dtfin='+str(dtfin)
 
 
-
     
     
 #Initial conditions
     
     #sol=init_triangular(solPointMesh)
 
-    sol =np.zeros([len(solPointMesh),len(solPointMesh[0])])
-    for i in range(len(solPointMesh)):
-        for j in range(len(solPointMesh[0])):
-            if init=='Gauss': # u0 = gaussienne 
-                sol[i,j]=m.exp(-20*(solPointMesh[i,j])**2)
-            elif init=='Constant': #u0 = cst
-                sol[i,j] = 10.0
-            elif init=='Triangle': #u0 = __/\__
-                sol[i,j] = 0.0 #TODO
-            elif init==1: # u0 = fonction erreur
-                if 0==0:
-                    sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
-                else:
-                    sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
-            elif init=='Sine':
-                sol[i,j]=m.cos(2*2*np.pi*solPointMesh[i,j]) 
+    sol =np.zeros(len(x))
+    for i in range(len(x)):
+        if init=='Gauss': # u0 = gaussienne 
+            sol[i]=m.exp(-20*(x[i])**2)
     
- 
-# Integration
-    nG = p+1
-    tG,wG = gaussRule(nG)
-    intLagrange = np.zeros([len(tG),p+1])
-
-    for i in range(len(tG)):
-        for j in range(p+1):
-            intLagrange[i,j]=lagrange(tG[i],solPoint,j)
-
+    l2 = np.zeros(niter+2)
+    l2[0] = simps(sol**2,x)
 
 #Used for the runge kutta loop
     sol0 = np.copy(sol)
 #Used for comp.py
     sol00 = np.copy(sol)
 
-# Initialisation
-    sol_it = np.zeros([N,p+1])          # Values on solution points
-    sol_it_ex = np.zeros([N,p+3])       # Extrapolation on solution points and interface points (discontinuous solution)
-    dsol_it = np.zeros([N,p+1])         # Derivative of the discontinuous solution on solution points
-    dsol_it_ex = np.zeros([N,p+3])      # Extrapolation of the derivative of the discontinuous solution on solution points and interface points
-    flux_it = np.zeros([N,p+1])         # Discontinuous flux on solution points
-    dflux_it_cont = np.zeros([N,p+1])   # Continuous flux derivative on solution points
-
-    delta_flux_r = np.zeros([N])        # Left flux correction
-    delta_flux_l = np.zeros([N])        # Right flux correction
-
-
-    # Preparation for extrapolation (outside the loop: doesn't change inside)
-    Extrap = Extrap2Gen(p)              # Lagrange extrapolation matrix on flux points
-    Deriv = DGen(p)                     # Lagrange derivatives on solution points
-    
-    # Correction functions
-    if corFun == 0.:
-        dgl = g2Derivative(solPoint,p+1)            # Left correction function derivative on the solution points
-        dgr = -np.flipud(dgl)                       # Right correction function derivative on the solution points
-    elif corFun == 1.:
-        dgl, dgr = glgrDerivatives(solPoint,p+1)    # Left and right correction function derivative on the solution points 
-
     if(timeIntegration=="RK4"):
-        kFlux = np.zeros([4,N,p+1])                  # Stored flux at different stages
+        kFlux = np.zeros([4,Npoints])                  # Stored flux at different stages
 
-    l2 = np.zeros(niter+2)
-    l2[0] = gaussIntegration(sol**2,intLagrange,wG,dx)
+    dflux_it_cont = np.zeros(Npoints)
 
     ########################################################
     #                                                      #
@@ -172,85 +120,19 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
         
         for ik in range(len(alpha)):
 
-            sol_it = np.copy(sol)
-
-
-            # Extrapolation of solution on interfaces
-            for icell in range(0,N):        
-                sol_it_ex[icell,:] = np.dot(Extrap,sol_it[icell,:])
-                if(D!=0.):
-                    dsol_it[icell,:] = 2/dx[icell]*np.dot(Deriv,sol_it[icell,:])
-                    dsol_it_ex[icell,:] = np.dot(Extrap,dsol_it[icell,:])
-
-                flux_it[icell,:] = c*sol_it[icell,:] - D*dsol_it[icell,:]
-
-
-            # Correction flux on interfaces computation (boundary conditions)
-            if(bcond==0):       # Dirichlet BC
-                if(D==0.):
-                    if(c>0.):
-                        delta_flux_l[0] = c*(Yl-sol_it_ex[0,0])
-                        delta_flux_l[-1] = c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0])
-                    elif(c<0.):
-                        delta_flux_r[0] = c*(sol_it_ex[1,0]-sol_it_ex[0,-1])
-                        delta_flux_r[-1] = c*(Yr-sol_it_ex[-1,-1])
-                else:
-                    if(c>0.):
-                        delta_flux_l[0] = c*(Yl-sol_it_ex[0,0])
-                    delta_flux_r[0] = 0.5*( c*(sol_it_ex[1,0]-sol_it_ex[0,-1]) - D*(dsol_it_ex[1,0]-dsol_it_ex[0,-1]) )
-
-                    delta_flux_l[-1] = 0.5*( c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0]) - D*(dsol_it_ex[-2,-1]-dsol_it_ex[-1,0]) )
-                    if(c<0.):
-                        delta_flux_r[-1] = c*(Yr-sol_it_ex[-1,-1])
-
-            elif(bcond==1):     # Periodic BC
-                if(D==0.):
-                    if(c>0.):
-                        delta_flux_l[0] = c*(sol_it_ex[-1,-1]-sol_it_ex[0,0])
-                        delta_flux_l[-1] = c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0])
-                    elif(c<0.):
-                        delta_flux_r[0] = c*(sol_it_ex[1,0]-sol_it_ex[0,-1])
-                        delta_flux_r[-1] = c*(sol_it_ex[0,0]-sol_it_ex[-1,-1])
-                else:
-                    delta_flux_l[0] = 0.5*( c*(sol_it_ex[-1,-1]-sol_it_ex[0,0]) - D*(dsol_it_ex[-1,-1]-dsol_it_ex[0,0]) )
-                    delta_flux_r[0] = 0.5*( c*(sol_it_ex[1,0]-sol_it_ex[0,-1]) - D*(dsol_it_ex[1,0]-dsol_it_ex[0,-1]) )
-
-                    delta_flux_l[-1] = 0.5*( c*(sol_it_ex[-2,-1]-sol_it_ex[-1,0]) - D*(dsol_it_ex[-2,-1]-dsol_it_ex[-1,0]) )
-                    delta_flux_r[-1] = 0.5*( c*(sol_it_ex[0,0]-sol_it_ex[-1,-1]) - D*(dsol_it_ex[0,0]-dsol_it_ex[-1,-1]) )
-
-            # Continuous flux on solution points computation (boundary cells)
-            dflux_it_cont[0,:] = 2/dx[0]*(np.dot(Deriv,flux_it[0,:]) + delta_flux_l[0]*dgl + delta_flux_r[0]*dgr)
-            dflux_it_cont[-1,:] = 2/dx[-1]*(np.dot(Deriv,flux_it[-1,:]) + delta_flux_l[-1]*dgl + delta_flux_r[-1]*dgr)
-
-
-            # Correction flux on interfaces computation (internal cells)
-            for icell in range(1,N-1):
-
-                if(D==0.):
-                    if(c>0.):
-                        delta_flux_l[icell] = c*(sol_it_ex[icell-1,-1]-sol_it_ex[icell,0])
-                    elif(c<0.):
-                        delta_flux_r[icell] = c*(sol_it_ex[np.mod(icell+1,N),0]-sol_it_ex[icell,-1])
-                else:
-                    delta_flux_l[icell] = 0.5*( c*(sol_it_ex[icell-1,-1]-sol_it_ex[icell,0]) - D*(dsol_it_ex[icell-1,-1]-dsol_it_ex[icell,0]) )
-                    delta_flux_r[icell] = 0.5*( c*(sol_it_ex[np.mod(icell+1,N),0]-sol_it_ex[icell,-1]) - D*(dsol_it_ex[np.mod(icell+1,N),0]-dsol_it_ex[icell,-1]) )
-                
-                # Continuous flux on solution points computation (internal cells)
-                dflux_it_cont[icell,:] = 2/dx[icell]*(np.dot(Deriv,flux_it[icell,:]) + delta_flux_l[icell]*dgl + delta_flux_r[icell]*dgr)
-
-
+            dflux_it_cont = c*(sol-np.roll(sol,1))/dx[0]
 
             # Solution update
             sol = sol0 - dti * alpha[ik]*dflux_it_cont
             if(timeIntegration=="RK4"):         # Saving stages
-                kFlux[ik,:,:] = dflux_it_cont
-        
-        l2[itime+1] = gaussIntegration(sol**2,intLagrange,wG,dx)
+                kFlux[ik,:] = dflux_it_cont
 
         if(timeIntegration=="RK4"):             # Combining stages
             sol = sol0
             for ik in range(len(beta)):
-                sol = sol - dti*beta[ik]*kFlux[ik,:,:]
+                sol = sol - dti*beta[ik]*kFlux[ik,:]
+
+        l2[itime+1] = simps(sol**2,x)
 
         if itime==niter:
             dt1=dt
@@ -263,31 +145,38 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
 
     print "-----------------------------------------------"
 
-    # Reshape the matrix into a vector
-
-    solPointMesh = solPointMesh.reshape((p + 1) * N)
-    sol = sol.reshape(((p + 1) * N))
-    sol00 = sol00.reshape((p + 1) * N)
-    solPointMesh00=np.copy(solPointMesh)
-    
-    # Final number of points for interpolation
-    h=1000
-    solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
-    solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
 
 
-    return solPointMesh00, sol00, solPointMesh, sol, niter, l2
+    return x, sol00, x, sol, niter, l2
 
 
 
 '''Part 1 Position of points and mesh of the domain'''
 
 def solPointGen(p):
-    ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
-    solPoint = np.zeros(p+1)
-    for i in range(len(solPoint)):
-        solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1))) # Peut-être qu'il faut faire solPoint[i+1], not sure --> Nope, c'est correct car en python on commence à 0
-    return solPoint 
+# Compute solution points for an isoparametric cell with Gauss points '''
+    order = p+1
+    if order==1 :
+        t=np.array([0.0])
+    elif order==2:
+        t=np.array([-np.sqrt(1./3),np.sqrt(1./3)])
+    elif order==3:
+        t=np.array([-0.77459667, 0.0, 0.77459667])
+    elif order==4:
+        t=np.array([-0.86113631, -0.33998104, 0.33998104, 0.86113631])
+    elif order==5:
+        t=np.array([-0.90617985, -0.53846931, 0.0, 0.53846931, 0.90617985])
+    elif order==6:
+        t=np.array([-0.93246951, -0.66120939, -0.23861918, 0.23861918, 0.66120939, 0.93246951])
+    elif order==7:
+        t=np.array([-0.94910791, -0.74153119, -0.40584515, 0.0, 0.40584515, 0.74153119, 0.94910791])
+    elif order==8:
+        t=np.array([-0.96028986, -0.79666648, -0.52553241, -0.18343464, 0.18343464, 0.52553241, 0.79666648, 0.96028986])
+    else:
+        t=0
+        print 'Choose different value for number of Gauss integration points'
+        
+    return t
 
 def pointMeshGen(N,p, point,dx,xreal):
     ''' Compute flux or solution points '''

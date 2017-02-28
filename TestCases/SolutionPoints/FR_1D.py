@@ -282,12 +282,9 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
 
 '''Part 1 Position of points and mesh of the domain'''
 
+
 def solPointGen(p):
-    ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
-    solPoint = np.zeros(p+1)
-    for i in range(len(solPoint)):
-        solPoint[i] = - np.cos(np.pi * (2. * (i + 1) - 1) / (2 * (p + 1))) # Peut-être qu'il faut faire solPoint[i+1], not sure --> Nope, c'est correct car en python on commence à 0
-    return solPoint 
+    return np.loadtxt("SP.txt")
 
 def pointMeshGen(N,p, point,dx,xreal):
     ''' Compute flux or solution points '''

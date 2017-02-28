@@ -13,6 +13,7 @@ import FR_1D
 import DFR_1D
 import FD_1D
 import time
+import solutionPoints
 
 ### Parameters
 
@@ -23,10 +24,33 @@ fou = False
 NCycles = 1000
 
 # Spectral method order
-p = 4
+p = 5
 
 # Number of cells
 N = 5
+
+# Type of SP
+# SP = 1    --> Gauss-Lobatto
+# SP = 2    --> Gauss
+# SP = 3
+SPchoice = 3
+if p == 3:
+    z1SP = 0.339842589774454
+    z1DG = np.sqrt(3./7.-2./7.*np.sqrt(6./5.))
+    z11 = 0.3402
+    z12 = 0.35
+elif p == 4:
+    z1SP = 0.538323058771738
+    z1DG = 1./3.*np.sqrt(5.-2.*np.sqrt(10./7.))
+    z11 = 0.5387
+    z12 = 0.55
+elif p == 5:
+    z1SP = 0.238431046729096
+    z1DG = 0.238619186083197
+    z11 = 0.2389
+    z12 = 0.25
+
+
 
 # Stability criterion : CFL 
 CFL = 0.8                                  # La condition CFL semble plus restrictive que CFL < 1 (GR)
@@ -90,24 +114,29 @@ timeIntegration='RK4'
 # cellmask = 'Irregular' -> unevenly customisable cell spacing
 cellmask = 'Regular'
 
+
+
+
 ### Computing solution
+solutionPoints.writeSP(p,SPchoice,z1SP)
 t0 = time.time()
-x0SD, sol0SD, xSD, solSD, niterSD, l2SD = SDcombu_diff.main(p,method,CFL,Tfin,c,D,0,grad_init,bcond,bcond,yL,yR,N,L,timeIntegration,cellmask)
-tSD = time.time()-t0
+x0DFR1, sol0DFR1, xDFR1, solDFR1, niterDFR1, l2DFR1 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+tDFR1 = time.time()-t0
 
-
+solutionPoints.writeSP(p,SPchoice,z1DG)
 t0 = time.time()
-x0FR, sol0FR, xFR, solFR, niterFR, l2FR = FR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,corFun,timeIntegration,cellmask)
-tFR = time.time()-t0
+x0DFR1, sol0DFR2, xDFR2, solDFR2, niterDFR2, l2DFR2 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+tDFR2 = time.time()-t0
 
+solutionPoints.writeSP(p,SPchoice,z11)
 t0 = time.time()
-x0DFR, sol0DFR, xDFR, solDFR, niterDFR, l2DFR = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
-tDFR = time.time()-t0
+x0DFR1, sol0DFR3, xDFR3, solDFR3, niterDFR3, l2DFR3 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+tDFR3 = time.time()-t0
 
-if(fou):
-    t0 = time.time()
-    x0FD, sol0FD, xFD, solFD, niterFD, l2FD = FD_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,timeIntegration,cellmask)
-    tFD = time.time()-t0
+solutionPoints.writeSP(p,SPchoice,z12)
+t0 = time.time()
+x0DFR1, sol0DFR4, xDFR4, solDFR4, niterDFR4, l2DFR4 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+tDFR4 = time.time()-t0
 
 
 
@@ -149,39 +178,24 @@ plt.rcParams.update({'font.size': 18})
 
 plt.figure()
 plt.plot(x,yth, 'k-')
-plt.plot(xSD,solSD)
-plt.plot(xFR,solFR)
-plt.plot(xDFR,solDFR)
-if(fou):
-    plt.plot(xFD,solFD)
-    plt.legend(['Initial','SD','FR','DFR','FOU'],loc=0)
-else:
-    plt.legend(['Initial','SD','FR','DFR'],loc=0)
+plt.plot(xDFR1,solDFR1)
+plt.plot(xDFR2,solDFR2,'--')
+plt.plot(xDFR3,solDFR3,'-.')
+plt.plot(xDFR4,solDFR4)
+plt.legend(['Initial','$z_1 = z_{1 SP}$','$z_1 = z_{1 DG}$','$z_1 = $'+str(z11),'$z_1 = $'+str(z12)],loc=0)
 plt.title("Solution")
 plt.xlabel("x")
 plt.ylabel("u")
 
 plt.figure()
-plt.plot(np.linspace(0,niterSD+1,niterSD+2)/10000.,l2SD)
-plt.plot(np.linspace(0,niterFR+1,niterFR+2)/10000.,l2FR)
-plt.plot(np.linspace(0,niterDFR+1,niterDFR+2)/10000.,l2DFR)
-if(fou):
-    plt.plot(np.linspace(0,niterFD+1,niterFD+2),l2FD)
-    plt.legend(['SD','FR','DFR','FOU'],loc=0)
-else:
-    plt.legend(['SD','FR','DFR'],loc=0)
+plt.plot(np.linspace(0,niterDFR1+1,niterDFR1+2)/10000.,l2DFR1)
+plt.plot(np.linspace(0,niterDFR2+1,niterDFR2+2)/10000.,l2DFR2,'--')
+plt.plot(np.linspace(0,niterDFR3+1,niterDFR3+2)/10000.,l2DFR3,'-.')
+plt.plot(np.linspace(0,niterDFR4+1,niterDFR4+2)/10000.,l2DFR4)
+plt.legend(['$z_1 = z_{1 SP}$','$z_1 = z_{1 DG}$','$z_1 = $'+str(z11),'$z_1 = $'+str(z12)],loc=0)
 plt.title("L2-norm of the solution")
 plt.xlabel("Iteration (10^4)")
 plt.ylabel("L2-norm")
-
-# Write initialization
-file=open("times.txt","w")
-file.write(str(tSD) + "\n")
-file.write(str(tFR) + "\n")
-file.write(str(tDFR) + "\n")
-if(fou):
-    file.write(str(tFD) + "\n")
-file.close()
 
 
 plt.show()
