@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 ''' author: R. Pile & A. Schmalzried '''
 ''' 19/11/2016 '''
-''' Launch_1D.py : Script for DFR method '''
+''' Launch_1D.py : Script for DFR the Gaussian test case (with SPs from Romero et al) '''
+''' This work follows python scripts developped by J. Vanharen and V. Joncquieres, under the supervision of G. Puigt '''
+
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
