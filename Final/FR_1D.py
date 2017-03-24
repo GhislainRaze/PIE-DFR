@@ -15,6 +15,7 @@ from gauss import *
 ''' authors: W. Hambli & L. Ma & R. Pile & G. Raze & A. Schmalzried'''
 ''' 22/02/2017 '''
 ''' FR_1D.py : Python library for Flux Reconstruction Method '''
+''' This work follows python scripts developped by J. Vanharen and V. Joncquieres, under the supervision of G. Puigt '''
 
 
 
