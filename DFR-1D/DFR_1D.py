@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 ''' author: R. Pile & A. Schmalzried '''
 ''' 19/11/2016 '''
 ''' DFR_1D.py : Python library for direct Flux reconstruction Method '''
+''' This work follows python scripts developped by J. Vanharen and V. Joncquieres, under the supervision of G. Puigt '''
 
 
 
