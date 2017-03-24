@@ -6,9 +6,10 @@ import scipy.interpolate
 import scipy.integrate
 import math as m
 import matplotlib.pyplot as plt
-''' author: V. Joncquieres '''
+''' author: V. Joncquieres & J. Vanharen'''
 ''' 23/03/15 '''
 ''' SD combu.py : Python library for Spectral Difference Method in combustion '''
+
 
 def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr):
     ''' Order of polynomial p '''
