@@ -7,9 +7,10 @@ import scipy.integrate
 import math as m
 import matplotlib.pyplot as plt
 from gauss import *
-''' author: V. Joncquieres '''
+''' author: V. Joncquieres & J. Vanharen'''
 ''' 23/03/15 '''
 ''' SD combu.py : Python library for Spectral Difference Method in combustion '''
+''' This work follows python scripts developped by J. Vanharen and V. Joncquieres, under the supervision of G. Puigt '''
 
 def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegration="RK6low",cellmask="Regular",ksin=np.pi/2):
     ''' Order of polynomial p '''
