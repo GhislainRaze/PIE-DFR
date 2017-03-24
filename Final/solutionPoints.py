@@ -55,7 +55,6 @@ def writeSP(p,SPchoice,z1=0.):
             else:
                 solPoint= np.array([-np.sqrt(3./7.)*np.sqrt((7*z1**2-5.)/(5*z1**2-3.)),-z1,0.,z1,np.sqrt(3./7.)*np.sqrt((7*z1**2-5.)/(5*z1**2-3.))])
         elif p == 5:
-            # WARNING: Probably wrong
             if z1 < 0. or z1 > np.sqrt(3./7.-2./7.*np.sqrt(6./5.)):
                 solPoint = np.array([-0.93246951,-0.66120939,-0.23861919,0.23861919,0.66120939,0.093246951])
             else:

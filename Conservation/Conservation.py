@@ -15,6 +15,7 @@ Created on Mon Jan 30 14:38:58 2017
 import numpy as np
 import matplotlib.pyplot as plt
 from polynomials import *
+from gauss import *
 
 def solPointGen(p):
     ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
@@ -227,116 +228,15 @@ def solution(x):
 def dsolution(x):
     return -2*x/0.1*np.exp(-(x)**2/0.1)    
 
-# Definition des constantes    
-p = 2                                                # Degre
-Ncells = 3
-c = 10.
-xi = solPointGen(p)                                     # SP pour le degre p
-xi2 = np.insert(xi,0,-1)    
-xi2 = np.append(xi2,1)                                  # SP pour le degre p+2
-x = np.linspace(-1,1,501)                               # Affichage des fonctions 'continues'
 
-xc = x[0] + (x[-1]-x[0])/Ncells*np.linspace(0,Ncells,Ncells+1)
+SP = np.array([0.5])
+p = len(SP)-1
+nG = np.ceil(0.5*(p+1))
+wG,tG = gaussRule(nG)
 
-solPointMesh = np.zeros([Ncells,len(xi)])
-fluxPointMesh = np.zeros([Ncells,len(xi2)])
-sol_it = np.zeros([Ncells,len(xi)])
-Extrap2 = Extrap2Gen(p)
-Deriv2 = D2Gen(p)
-Deriv22 = D2Gen2(p)
-sol_it_p2 = np.zeros([Ncells,p+3])
-flux_it_p2 = np.zeros([Ncells,p+3])
-derivTrueCell = np.zeros([Ncells,p+3])
-derivUndersampledCell = np.zeros([Ncells,p+1])
+FP = np.append(SP,1)
+FP = np.insert(FP,0,-1)
+yi = np.array([2.,1.,3.])
 
-
-for i in range(Ncells):
-    for j in range(len(xi)):
-        solPointMesh[i,j] = 0.5*(xc[i+1]+xc[i]) + 0.5*(xc[i+1]-xc[i])*xi[j]
-        sol_it[i,j] = solution(solPointMesh[i,j])
-    for j in range(len(xi2)):
-        fluxPointMesh[i,j] = 0.5*(xc[i+1]+xc[i]) + 0.5*(xc[i+1]-xc[i])*xi2[j]
-
-
-for icell in range(Ncells):
-    sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-
-    if(c>0):
-        flux_it_p2[icell,0] = c*sol_it_p2[icell-1,-1]
-    elif(c<0):
-        flux_it_p2[icell,-1] = c*sol_it_p2[np.mod(icell+1,Ncells),0]
-        
-    derivTrueCell[icell] = np.dot(Deriv22,flux_it_p2[icell,:])/(0.5*(xc[icell+1]-xc[icell]))
-    derivUndersampledCell[icell] = np.dot(Deriv2,flux_it_p2[icell,:])/(0.5*(xc[icell+1]-xc[icell]))
-
-pointsDerivTrue,derivTrue = interpolation(fluxPointMesh,derivTrueCell,p+2,100,xc[1]-xc[0],Ncells)    
-pointsUSDeriv,derivUS = interpolation(solPointMesh,derivUndersampledCell,p,100,xc[1]-xc[0],Ncells)    
-deriv = c*dsolution(x)
-
-plt.figure()
-#plt.plot(pointsDerivTrue,derivTrue,'-g')
-plt.plot(np.reshape(fluxPointMesh,Ncells*(p+3),1),np.reshape(derivTrueCell,Ncells*(p+3),1),'og')
-plt.plot(np.reshape(solPointMesh,Ncells*(p+1),1),np.reshape(derivUndersampledCell,Ncells*(p+1),1),'ob')
-plt.plot(x,deriv,'--k')
-plt.plot(pointsUSDeriv,derivUS,'-b')
-plt.legend(('Derivative of the continuous flux','Derivative of degree p+1','True derivative'), loc='best')
-plt.title("Derivatives - DFR")
-
-
-#################################################################################
-# FR
-#################################################################################
-
-
-solPointMesh = np.zeros([Ncells,len(xi)])
-fluxPointMesh = np.zeros([Ncells,len(xi2)])
-sol_it = np.zeros([Ncells,len(xi)])
-sol_it_p2 = np.zeros([Ncells,p+3])
-flux_it_p2 = np.zeros([Ncells,p+3])
-g2dl = g2Derivative(xi,p)
-g2dr = np.flipud(g2Derivative(xi,p))
-g2dl2 = g2Derivative(xi2,p)
-g2dr2 = -np.flipud(g2Derivative(xi2,p))
-Deriv = DGen(p)
-Deriv2 = D2Gen3(p)
-
-for i in range(Ncells):
-    for j in range(len(xi)):
-        solPointMesh[i,j] = 0.5*(xc[i+1]+xc[i]) + 0.5*(xc[i+1]-xc[i])*xi[j]
-        sol_it[i,j] = solution(solPointMesh[i,j])
-    for j in range(len(xi2)):
-        fluxPointMesh[i,j] = 0.5*(xc[i+1]+xc[i]) + 0.5*(xc[i+1]-xc[i])*xi2[j]
-
-
-for icell in range(Ncells):
-    sol_it_p2[icell,:] = np.dot(Extrap2,sol_it[icell,:])
-    flux_it_p2[icell,:] = c*sol_it_p2[icell,:]
-
-    if(c>0):
-        dflux_left = c*(sol_it_p2[icell-1,-1]-sol_it_p2[icell,0])
-        dflux_right = 0.
-    elif(c<0):
-        dflux_left = 0.
-        deflux_right = c*(sol_it_p2[np.mod(icell+1,Ncells),0]-sol_it_p2[icell,-1])
-        
-        
-    
-    derivUndersampledCell[icell] = (np.dot(Deriv,flux_it_p2[icell,1:-1]) + dflux_left*g2dl + dflux_right * g2dr)/(0.5*(xc[icell+1]-xc[icell]))
-    derivTrueCell[icell] = (np.dot(Deriv2,flux_it_p2[icell,1:-1]) + dflux_left*g2dl2 + dflux_right * g2dr2)/(0.5*(xc[icell+1]-xc[icell]))
-        
-
-pointsDerivTrue,derivTrue = interpolation(fluxPointMesh,derivTrueCell,p+2,100,xc[1]-xc[0],Ncells)    
-pointsUSDeriv,derivUS = interpolation(solPointMesh,derivUndersampledCell,p,100,xc[1]-xc[0],Ncells)    
-deriv = c*dsolution(x)
-
-plt.figure()
-#plt.plot(pointsDerivTrue,derivTrue,'-g')
-plt.plot(np.reshape(fluxPointMesh,Ncells*(p+3),1),np.reshape(derivTrueCell,Ncells*(p+3),1),'og')
-plt.plot(np.reshape(solPointMesh,Ncells*(p+1),1),np.reshape(derivUndersampledCell,Ncells*(p+1),1),'ob')
-plt.plot(x,deriv,'--k')
-plt.plot(pointsUSDeriv,derivUS,'-b')
-plt.legend(('Derivative of the continuous flux','Derivative of degree p+1','True derivative'), loc='best')
-plt.title("Derivatives - FR")
-
-plt.show()
+print FP
+print yi

@@ -18,7 +18,7 @@ from gauss import *
 
 
 
-def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration="RK6low",cellmask="Regular"):
+def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun,timeIntegration,cellmask):
     ''' Order of polynomial p '''
     ''' advection celerity c, diffusion coefficient D '''
     ''' Runge-Kutta coeffcients alpha '''
@@ -45,7 +45,7 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
-    x[0]=-0.5*L
+    x[0]=-0.5*N*dx[0] 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
 
@@ -90,8 +90,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
     
     
 #Initial conditions
-    
-    #sol=init_triangular(solPointMesh)
 
     sol =np.zeros([len(solPointMesh),len(solPointMesh[0])])
     for i in range(len(solPointMesh)):
@@ -257,32 +255,33 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
             print "-----------------------------------------------"
             print "Iteration:"+str(itime) +",Time: " + str(itime*dt1+dtfin) + "/" + str(niter*dt+dtfin)
         else:
-            if divmod(itime,1000)[1]==0:
+            if divmod(itime,10)[1]==0:
                 print "-----------------------------------------------"
                 print "Iteration:"+str(itime)+ ",Time: " + str((itime + 1)*dt) + "/" + str(niter*dt+dtfin)
 
     print "-----------------------------------------------"
 
- # to reshape the matrix into a vector '''
+    # Reshape the matrix into a vector
 
     solPointMesh = solPointMesh.reshape((p + 1) * N)
     sol = sol.reshape(((p + 1) * N))
-    sol00 = np.copy(sol)
+    sol00 = sol00.reshape((p + 1) * N)
     solPointMesh00=np.copy(solPointMesh)
     
-# final number of points for interpolation
+    # Final number of points for interpolation
     h=1000
-    solPointMesh,sol=interpolation(solPointMesh,sol,p,h,dx[0],N)
-    # solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        #-> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
-    
-    
+    solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
+    solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
+
 
     return solPointMesh00, sol00, solPointMesh, sol, niter, l2
 
+
+
 '''Part 1 Position of points and mesh of the domain'''
 
-
 def solPointGen(p):
+    ''' Compute solution points for an isoparametric cell with p + 1 Gauss-Lobatto points '''
     return np.loadtxt("SP.txt")
 
 def pointMeshGen(N,p, point,dx,xreal):

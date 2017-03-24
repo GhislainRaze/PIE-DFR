@@ -21,7 +21,7 @@ import solutionPoints
 fou = False
 
 # Number of cycles
-NCycles = 10
+NCycles = 1000
 
 # Spectral method order
 p = 4
@@ -33,7 +33,7 @@ N = 5
 # SP = 1    --> Gauss-Lobatto
 # SP = 2    --> Gauss
 # SP = 3
-SPchoice = 1
+SPchoice = 2
 
 solutionPoints.writeSP(p,SPchoice)
 
@@ -121,6 +121,8 @@ if(fou):
 
 
 
+
+
 x = np.linspace(-0.5*L,0.5*L,10*N*p)
 
 # Write results, need to modify filename 
@@ -158,31 +160,67 @@ file.close()
 plt.rcParams.update({'font.size': 18})
 
 plt.figure()
-plt.plot(x,yth, 'k-')
-plt.plot(xSD,solSD)
-plt.plot(xFR,solFR)
-plt.plot(xDFR,solDFR)
+plt.ylim([-0.5,2.5])
+plt.plot(x,yth,'k')
+plt.plot(x0SD,sol0SD,'d',color=[1,0,0],markersize = 10,markerfacecolor='None',markeredgecolor=[1,0,0],markeredgewidth=2)
+plt.plot(x0FR,sol0FR,'+',color=[0.5,0,0.5],markersize = 10,markeredgewidth=2)
+plt.plot(x0DFR,sol0DFR,'o',color=[0,0,1],markersize = 10,markerfacecolor='None',markeredgecolor=[0,0,1],markeredgewidth=2)
 if(fou):
-    plt.plot(xFD,solFD)
-    plt.legend(['Initial','SD','FR','DFR','FOU'],loc=0)
+    plt.plot(x0FD,sol0FD,'x',color=[0,0.4,0.4],markersize = 10,markeredgewidth=2)
+    plt.legend(['True solution','SD','FR','DFR','FOU'],loc='upper right')
 else:
-    plt.legend(['Initial','SD','FR','DFR'],loc=0)
-plt.title("Solution")
-plt.xlabel("x")
-plt.ylabel("u")
+    plt.legend(['True solution','SD','FR','DFR'],loc='upper right')
+
+
+plt.plot(xSD,solSD,color=[1,0,0])
+plt.plot(xFR,solFR,color=[0.5,0,0.5])
+plt.plot(xDFR,solDFR,color=[0,0,1])
+if(fou):
+    plt.plot(xFD,solFD,color=[0,0.4,0.4])
+
+
+
 
 plt.figure()
-plt.plot(np.linspace(0,niterSD+1,niterSD+2)/10000.,l2SD)
-plt.plot(np.linspace(0,niterFR+1,niterFR+2)/10000.,l2FR)
-plt.plot(np.linspace(0,niterDFR+1,niterDFR+2)/10000.,l2DFR)
+
+Nticks = 20
+
+
+NSD = int(np.floor((niterSD+1)/Nticks))
+NFR = int(np.floor((niterFR+1)/Nticks))
+NDFR = int(np.floor((niterDFR+1)/Nticks))
+if fou:
+    NFD = int(np.floor((niterFD+1)/Nticks))
+
+VSD = np.linspace(0,niterSD+1,niterSD+2)
+VFR = np.linspace(0,niterFR+1,niterFR+2)
+VDFR = np.linspace(0,niterDFR+1,niterDFR+2)
+if fou :
+    VFD = np.linspace(0,niterFD+1,niterFD+2)
+
+
+
+plt.plot(VSD[0:-2:NSD]/10000.,l2SD[0:-2:NSD],'d',color=[1,0,0],markersize = 10,markerfacecolor='None',markeredgecolor=[1,0,0],markeredgewidth=2)
+plt.plot(VFR[0:-2:NFR]/10000.,l2FR[0:-2:NFR],'+',color=[0.5,0,0.5],markersize = 10,markeredgewidth=2)
+plt.plot(VDFR[0:-2:NDFR]/10000.,l2DFR[0:-2:NDFR],'o',color=[0,0,1],markersize = 10,markerfacecolor='None',markeredgecolor=[0,0,1],markeredgewidth=2)
 if(fou):
-    plt.plot(np.linspace(0,niterFD+1,niterFD+2),l2FD)
-    plt.legend(['SD','FR','DFR','FOU'],loc=0)
+    plt.plot(VFD[0:NFD*Nticks:NFD],l2FD[0:-1:NFD],'x',color=[0,0.5,0.75],markersize = 10,markeredgewidth=2)
+    plt.legend(['SD','FR','DFR','FOU'],loc='upper right')
 else:
-    plt.legend(['SD','FR','DFR'],loc=0)
-plt.title("L2-norm of the solution")
+    plt.legend(['SD','FR','DFR'],loc='upper right')
+
+
+plt.plot(np.linspace(0,niterSD,niterSD+1)/10000.,l2SD[0:-1],color=[1,0,0])
+plt.plot(np.linspace(0,niterFR,niterFR+1)/10000.,l2FR[0:-1],color=[0.5,0,0.5])
+plt.plot(np.linspace(0,niterDFR,niterDFR+1)/10000.,l2DFR[0:-1],color=[0,0,1])
+if(fou):
+    plt.plot(np.linspace(0,niterFD+1,niterFD+2),l2FD,color=[0,0.5,0.75])
+plt.title("L2-norm")
 plt.xlabel("Iteration (10^4)")
 plt.ylabel("L2-norm")
+
+plt.show()
+
 
 # Write initialization
 file=open("times.txt","w")
@@ -192,8 +230,4 @@ file.write(str(tDFR) + "\n")
 if(fou):
     file.write(str(tFD) + "\n")
 file.close()
-
-
-plt.show()
-
 

@@ -268,17 +268,20 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,corFun=0,timeIntegration=
 
     print "-----------------------------------------------"
 
-    # Reshape the matrix into a vector
+    # to reshape the matrix into a vector '''
 
     solPointMesh = solPointMesh.reshape((p + 1) * N)
     sol = sol.reshape(((p + 1) * N))
-    sol00 = sol00.reshape((p + 1) * N)
+    sol00 = np.copy(sol)
     solPointMesh00=np.copy(solPointMesh)
     
-    # Final number of points for interpolation
+# final number of points for interpolation
     h=1000
     solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
-    solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
+    # solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        #-> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
+    
+    
+
 
 
     return solPointMesh00, sol00, solPointMesh, sol, niter, l2

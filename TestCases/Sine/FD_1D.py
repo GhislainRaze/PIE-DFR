@@ -98,7 +98,6 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,timeIntegration="RK6low",
 #Used for the runge kutta loop
     sol0 = np.copy(sol)
 #Used for comp.py
-    sol00 = np.copy(sol)
 
     if(timeIntegration=="RK4"):
         kFlux = np.zeros([4,Npoints])                  # Stored flux at different stages
@@ -134,10 +133,12 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,timeIntegration="RK6low",
             elif(bcond==0):
                 
                 if(c>0.):
-                    dflux_it_cont[0] = c*(sol[1]-Yl)/dx[0]
+                    dflux_it_cont[0] = 0.
+                    sol0[0] = Yl
                     dflux_it_cont[1:] = c*(sol[1:]-sol[0:-1])/dx[0]
                 elif(c<0.):
-                    dflux_it_cont[-1] = c*(Yr-sol[-2])/dx[-1]
+                    dflux_it_cont[-1] = 0.
+                    sol[-1] = Yr
                     dflux_it_cont[0:-1] = c*(sol[1:]-sol[0:-1])/dx[0]
 
 
@@ -164,9 +165,13 @@ def main(p,CFL,Tfin,c,D,init,grad_init,bcond,Yl,Yr,N,L,timeIntegration="RK6low",
 
     print "-----------------------------------------------"
 
+    sol00 = np.zeros(N)
+    x00 = np.zeros(N)
+    for icell in range(N):
+        sol00[icell] = sol[icell*(p+1)] 
+        x00[icell] = x[icell*(p+1)]
 
-
-    return x, sol00, x, sol, niter, l2
+    return x00, sol00, x, sol, niter, l2
 
 
 

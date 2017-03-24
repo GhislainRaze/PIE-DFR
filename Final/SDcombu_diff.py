@@ -11,7 +11,7 @@ from gauss import *
 ''' 23/03/15 '''
 ''' SD combu.py : Python library for Spectral Difference Method in combustion '''
 
-def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegration="RK6low",cellmask="Regular"):
+def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegration,cellmask):
     ''' Order of polynomial p '''
     ''' Runge-Kutta coeffcients alpha '''
     ''' Mesh composed of n isoparametric cells |-------| '''
@@ -37,7 +37,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 
     # Cells centered about -L/2 to +L/2 AS
     x=np.zeros(N+1)
-    x[0]=-0.5*L
+    x[0]=-0.5*N*dx[0] 
     for i in range(N):
         x[i+1]=x[i]+dx[i]
     
@@ -80,18 +80,22 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 #Initialisation
     
 
-    #sol=init_triangular(solPointMesh)
-
     sol =np.zeros([len(solPointMesh),len(solPointMesh[0])])
     for i in range(len(solPointMesh)):
         for j in range(len(solPointMesh[0])):
-            if init==0:
+            if init=='Gauss': # u0 = gaussienne 
                 sol[i,j]=m.exp(-20*(solPointMesh[i,j])**2)
-            elif init==1: 
-                if method==0:
-                    sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2
+            elif init=='Constant': #u0 = cst
+                sol[i,j] = 10.0
+            elif init=='Triangle': #u0 = __/\__
+                sol[i,j] = 0.0 #TODO
+            elif init==1: # u0 = fonction erreur
+                if 0==0:
+                    sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/2))/2 
                 else:
                     sol[i,j]=(1-m.erf((solPointMesh[i,j]-c*grad_init)/(2*m.sqrt(D*grad_init))))/2
+            elif init=='Sine':
+                sol[i,j]=m.cos(2*2*np.pi*solPointMesh[i,j]) 
 # Integration
     nG = p+1
     tG,wG = gaussRule(nG)
@@ -146,19 +150,19 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
                 
 # real domain to isoparametric dimension 
                 #Jacobian in 1D
-                J=dx[icell]/2
+                J=dx[0]/2
                 
                 
-                sol_it= sol
+                sol_it= sol/J
 # Extrapolation of solution on fluxes points
                 
                 sol_flux_it[icell,:]=np.dot(Extrap,sol_it[icell,:])
                 if bcondL==0:
-                    sol_flux_it[0,0]=Yl
+                    sol_flux_it[0,0]=Yl/J
                 elif bcondL==1:
                     sol_flux_it[0,0]=sol_flux_it[-1,-1]	
                 if bcondR==0:
-                    sol_flux_it[-1,-1]=Yr
+                    sol_flux_it[-1,-1]=Yr/J
                 elif bcondL==1:
                     sol_flux_it[-1,-1]=sol_flux_it[0,0]
 		# ADVECTION  Computation of fluxes at flux points : for advection F=cY
@@ -183,7 +187,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
                 
 #Derivation of sol on flux point with Deriv 
    
-                    Dadv[icell, :] = np.dot(Deriv, flux_it[icell,:])/J
+                    Dadv[icell, :] = np.dot(Deriv, flux_it[icell,:])
 
                 #DIFFUSION
 
@@ -197,8 +201,8 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
                 
 # Derivation of sol on flux point give a grad on sol point 
 
-                    grad[icell, :] = np.dot(Deriv, sol_flux_it[icell,:])/J
-                    gradF[icell,:] = np.dot(Extrap,grad[icell,:])
+                    grad[icell, :] = np.dot(Deriv, sol_flux_it[icell,:])
+                    gradF[icell,:] = np.dot(Extrap,grad[icell,:])/J
                 
 # Treatment of interfaces with mean for diffusion
                     grad_tmp = np.copy(gradF)
@@ -212,7 +216,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
                     lapl[icell, :] = np.dot(Deriv, gradF[icell,:])
             
             # Correction: for periodic BCs (GR)
-            Dadv[0, :] = np.dot(Deriv, flux_it[0,:])*2/dx[0]
+            Dadv[0, :] = np.dot(Deriv, flux_it[0,:])
             lapl[0, :] = np.dot(Deriv, gradF[0,:])   
 
             sol = sol0 + dti *  alpha[ik]*(D*lapl-Dadv)
@@ -229,7 +233,7 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
             dt1=dt
             print "Iteration:"+str(itime) +",Time: " + str(itime*dt1+dtfin) + "/" + str(niter*dt+dtfin)
         else:
-            if divmod(itime,1000)[1]==0:
+            if divmod(itime,10)[1]==0:
                 print "-----------------------------------------------"
                 print "Iteration:"+str(itime)+ ",Time: " + str((itime + 1)*dt) + "/" + str(niter*dt+dtfin)
 
@@ -237,21 +241,19 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 
 
 
- # to reshape the matrix into a vector '''
+
+# to reshape the matrix into a vector '''
 
     solPointMesh = solPointMesh.reshape((p + 1) * N)
     sol = sol.reshape(((p + 1) * N))
-    sol00 = np.copy(sol)
+    sol00 = sol00.reshape((p + 1) * N)
     solPointMesh00=np.copy(solPointMesh)
     
 # final number of points for interpolation
     h=1000
-    solPointMesh,sol=interpolation(solPointMesh,sol,p,h,dx[0],N)
-    # solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)        #-> Il y a l'air d'avoir un souci avec l'interpolation, ca ne donne pas la bonne solution de depart (GR)
-    
-    
-
-    return solPointMesh00, sol00, solPointMesh, sol, niter, l2
+    solPointMesh,sol=interpolation(solPointMesh00,sol,p,h,dx[0],N)
+    solPointMesh00,sol00=interpolation(solPointMesh00,sol00,p,h,dx[0],N)
+    return solPointMesh00, sol00,solPointMesh, sol, niter, l2
 
 
 
@@ -264,8 +266,8 @@ def main(p,method,CFL,Tfin,c,D,init,grad_init,bcondL,bcondR,Yl,Yr,N,L,timeIntegr
 '''Part 1 Position of points and mesh of the domain'''
 
 def solPointGen(p):
+# Compute solution points for an isoparametric cell with Gauss points '''
     return np.loadtxt("SP.txt")
-
 
 def pointMeshGen(N,p, point,dx,xreel):
     ''' Compute flux or solution points '''

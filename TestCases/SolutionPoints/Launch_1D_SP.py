@@ -24,10 +24,10 @@ fou = False
 NCycles = 1000
 
 # Spectral method order
-p = 5
+p = 4
 
 # Number of cells
-N = 5
+N = 6
 
 # Type of SP
 # SP = 1    --> Gauss-Lobatto
@@ -125,17 +125,17 @@ tDFR1 = time.time()-t0
 
 solutionPoints.writeSP(p,SPchoice,z1DG)
 t0 = time.time()
-x0DFR1, sol0DFR2, xDFR2, solDFR2, niterDFR2, l2DFR2 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+x0DFR2, sol0DFR2, xDFR2, solDFR2, niterDFR2, l2DFR2 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
 tDFR2 = time.time()-t0
 
 solutionPoints.writeSP(p,SPchoice,z11)
 t0 = time.time()
-x0DFR1, sol0DFR3, xDFR3, solDFR3, niterDFR3, l2DFR3 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+x0DFR3, sol0DFR3, xDFR3, solDFR3, niterDFR3, l2DFR3 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
 tDFR3 = time.time()-t0
 
 solutionPoints.writeSP(p,SPchoice,z12)
 t0 = time.time()
-x0DFR1, sol0DFR4, xDFR4, solDFR4, niterDFR4, l2DFR4 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
+x0DFR4, sol0DFR4, xDFR4, solDFR4, niterDFR4, l2DFR4 = DFR_1D.main(p,CFL,Tfin,c,D,init,grad_init,bcond,yL,yR,N,L,tau,timeIntegration,cellmask)
 tDFR4 = time.time()-t0
 
 
@@ -177,22 +177,53 @@ file.close()
 plt.rcParams.update({'font.size': 18})
 
 plt.figure()
+plt.ylim([-0.5,2.5])
 plt.plot(x,yth, 'k-')
-plt.plot(xDFR1,solDFR1)
-plt.plot(xDFR2,solDFR2,'--')
-plt.plot(xDFR3,solDFR3,'-.')
-plt.plot(xDFR4,solDFR4)
-plt.legend(['Initial','$z_1 = z_{1 SP}$','$z_1 = z_{1 DG}$','$z_1 = $'+str(z11),'$z_1 = $'+str(z12)],loc=0)
+plt.plot(x0DFR1,sol0DFR1,'d',color=[1,0,0],markersize = 10,markerfacecolor='None',markeredgecolor=[1,0,0],markeredgewidth=2)
+plt.plot(x0DFR2,sol0DFR2,'+',color=[0.5,0,0.5],markersize = 10,markeredgewidth=2)
+plt.plot(x0DFR3,sol0DFR3,'o',color=[0,0,1],markersize = 10,markerfacecolor='None',markeredgecolor=[0,0,1],markeredgewidth=2)
+plt.plot(x0DFR4,sol0DFR4,'x',color=[0,0.5,0.75],markersize = 10,markeredgewidth=2)
+plt.legend(['True solution','$z_1 = z_{1 SP}$','$z_1 = z_{1 DG}$','$z_1 = $'+str(z11),'$z_1 = $'+str(z12)],loc=0)
+plt.plot(xDFR1,solDFR1,'-',color=[1,0,0],markersize = 10,markerfacecolor='None',markeredgecolor=[1,0,0],markeredgewidth=2)
+plt.plot(xDFR2,solDFR2,'-',color=[0.5,0,0.5],markersize = 10,markeredgewidth=2)
+plt.plot(xDFR3,solDFR3,'-',color=[0,0,1],markersize = 10,markerfacecolor='None',markeredgecolor=[0,0,1],markeredgewidth=2)
+plt.plot(xDFR4,solDFR4,'-',color=[0,0.5,0.75],markersize = 10,markeredgewidth=2)
 plt.title("Solution")
 plt.xlabel("x")
 plt.ylabel("u")
 
+
+
+Nticks = 20
+
+NDFR1 = int(np.floor((niterDFR1+1)/Nticks))
+NDFR2 = int(np.floor((niterDFR2+1)/Nticks))
+NDFR3 = int(np.floor((niterDFR3+1)/Nticks))
+NDFR4 = int(np.floor((niterDFR4+1)/Nticks))
+
+VDFR1 = np.linspace(0,niterDFR1+1,niterDFR1+2)
+VDFR2 = np.linspace(0,niterDFR2+1,niterDFR2+2)
+VDFR3 = np.linspace(0,niterDFR3+1,niterDFR3+2)
+VDFR4 = np.linspace(0,niterDFR4+1,niterDFR4+2)
+
+
+
+
 plt.figure()
-plt.plot(np.linspace(0,niterDFR1+1,niterDFR1+2)/10000.,l2DFR1)
-plt.plot(np.linspace(0,niterDFR2+1,niterDFR2+2)/10000.,l2DFR2,'--')
-plt.plot(np.linspace(0,niterDFR3+1,niterDFR3+2)/10000.,l2DFR3,'-.')
-plt.plot(np.linspace(0,niterDFR4+1,niterDFR4+2)/10000.,l2DFR4)
+
+
+
+plt.plot(VDFR1[0:-2:NDFR1]/10000.,l2DFR1[0:-2:NDFR1],'d',color=[1,0,0],markersize = 10,markerfacecolor='None',markeredgecolor=[1,0,0],markeredgewidth=2)
+plt.plot(VDFR2[0:-2:NDFR2]/10000.,l2DFR2[0:-2:NDFR2],'+',color=[0.5,0,0.5],markersize = 10,markeredgewidth=2)
+plt.plot(VDFR3[0:-2:NDFR3]/10000.,l2DFR3[0:-2:NDFR3],'o',color=[0,0,1],markersize = 10,markerfacecolor='None',markeredgecolor=[0,0,1],markeredgewidth=2)
+plt.plot(VDFR4[0:-2:NDFR4]/10000.,l2DFR4[0:-2:NDFR4],'x',color=[0,0.5,0.75],markersize = 10,markeredgewidth=2)
 plt.legend(['$z_1 = z_{1 SP}$','$z_1 = z_{1 DG}$','$z_1 = $'+str(z11),'$z_1 = $'+str(z12)],loc=0)
+
+
+plt.plot(VDFR1[0:-1]/10000.,l2DFR1[0:-1],color=[1,0,0])
+plt.plot(VDFR2[0:-1]/10000.,l2DFR2[0:-1],color=[0.5,0,0.5])
+plt.plot(VDFR3[0:-1]/10000.,l2DFR3[0:-1],color=[0,0,1])
+plt.plot(VDFR4[0:-1]/10000.,l2DFR4[0:-1],color=[0,0.5,0.75])
 plt.title("L2-norm of the solution")
 plt.xlabel("Iteration (10^4)")
 plt.ylabel("L2-norm")
